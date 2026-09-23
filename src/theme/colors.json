@@ -1,0 +1,13 @@
+{
+  "background": "#000000",
+  "surface": "#121416",
+  "surfaceRaised": "#1C2024",
+  "border": "#2A3035",
+  "text": "#F5F6F7",
+  "textSecondary": "#ACB4BC",
+  "primary": "#6CADDF",
+  "primaryMuted": "#142534",
+  "onPrimary": "#06121B",
+  "danger": "#F29B9B",
+  "transparent": "transparent"
+}
