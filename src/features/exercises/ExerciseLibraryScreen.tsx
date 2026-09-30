@@ -26,7 +26,9 @@ export function ExerciseLibraryScreen() {
   return <LibraryContent key={`${savedId ?? ''}:${savedAt ?? ''}`} initialQuery={typeof savedName === 'string' ? savedName : ''} />;
 }
 
-function LibraryContent({ initialQuery }: { initialQuery: string }) {
+type Selection = { selectedIds: string[]; onSelect: (exercise: Exercise) => void; onDone: () => void };
+
+export function LibraryContent({ initialQuery = '', selection }: { initialQuery?: string; selection?: Selection }) {
   const [query, setQuery] = useState(initialQuery);
   const [focused, setFocused] = useState(false);
   const list = useRef<FlatList<Exercise>>(null);
@@ -35,12 +37,15 @@ function LibraryContent({ initialQuery }: { initialQuery: string }) {
 
   useEffect(() => { list.current?.scrollToOffset({ offset: 0, animated: false }); }, [query]);
   const changeQuery = useCallback((value: string) => setQuery(value), []);
+  const renderItem = ({ item }: ListRenderItemInfo<Exercise>) => selection
+    ? <ExerciseCard exercise={item} onPress={selection.onSelect} selectionMode selected={selection.selectedIds.includes(item.id)} />
+    : <ExerciseCard exercise={item} onPress={openExercise} />;
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom', 'left', 'right']}>
       <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.header}>
-          <ExerciseHeader title="Exercícios" library />
+          <ExerciseHeader title={selection ? 'Adicionar exercícios' : 'Exercícios'} library onBack={selection?.onDone} />
           <View style={[styles.search, focused && styles.searchFocused]}>
             <Ionicons name="search-outline" color={colors.textSecondary} size={sizes.iconSmall} />
             <TextInput
@@ -57,7 +62,9 @@ function LibraryContent({ initialQuery }: { initialQuery: string }) {
               </Pressable>
             )}
           </View>
-          <AppButton title="Criar exercício" variant="secondary" onPress={() => router.push('/exercises/new')} />
+          {selection
+            ? <AppButton title={`Concluir seleção (${selection.selectedIds.length})`} onPress={selection.onDone} />
+            : <AppButton title="Criar exercício" variant="secondary" onPress={() => router.push('/exercises/new')} />}
           <View style={styles.summary} accessibilityLiveRegion="polite">
             <AppText variant="caption" tone="secondary">
               {status === 'loading' ? 'Buscando exercícios…' : status === 'error' ? 'Biblioteca indisponível' : `${items.length} ${items.length === 1 ? 'exercício' : 'exercícios'}${query.trim() ? ' encontrados' : ' na biblioteca'}`}
@@ -66,7 +73,7 @@ function LibraryContent({ initialQuery }: { initialQuery: string }) {
           </View>
         </View>
         <FlatList
-          ref={list} data={items} renderItem={renderExercise} keyExtractor={keyExtractor}
+          ref={list} data={items} renderItem={selection ? renderItem : renderExercise} keyExtractor={keyExtractor}
           style={styles.list} contentContainerStyle={styles.listContent}
           keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag"
           initialNumToRender={10} showsVerticalScrollIndicator={false}

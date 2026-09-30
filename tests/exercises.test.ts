@@ -6,7 +6,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 
 import { adapt } from './helpers/sqlite.ts';
-import { initializeDatabase } from '../src/db/migrations.ts';
+import { DATABASE_VERSION, initializeDatabase } from '../src/db/migrations.ts';
 import { normalizeExerciseText } from '../src/features/exercises/normalize.ts';
 import { createCustomExercise, getExercise, searchExercises, updateCustomExercise } from '../src/features/exercises/repository.ts';
 import { CATALOG_SIZE, seedExercises } from '../src/features/exercises/seed.ts';
@@ -37,7 +37,7 @@ test('upgrades a populated version 1 database without altering its metadata', as
       PRAGMA user_version = 1;
     `);
     await initializeDatabase(db);
-    assert.equal((await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version'))?.user_version, 2);
+    assert.equal((await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version'))?.user_version, DATABASE_VERSION);
     assert.equal((await db.getFirstAsync<{ value: string }>("SELECT value FROM app_metadata WHERE key = 'existing'"))?.value, 'preserved');
     assert.equal((await searchExercises(db, '')).length, CATALOG_SIZE);
   } finally { database.close(); }

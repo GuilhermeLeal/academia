@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 
+import type { WorkoutDatabase } from '../../src/features/workouts/repository.ts';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import type { DatabaseSync, SQLInputValue } from 'node:sqlite';
 
@@ -13,8 +14,8 @@ function bindings(params: unknown[]): SQLInputValue[] {
   });
 }
 
-export function adapt(database: DatabaseSync): Pick<SQLiteDatabase, 'execAsync' | 'runAsync' | 'getFirstAsync' | 'getAllAsync' | 'withTransactionAsync'> {
-  return {
+export function adapt(database: DatabaseSync): Pick<SQLiteDatabase, 'execAsync' | 'runAsync' | 'getFirstAsync' | 'getAllAsync' | 'withTransactionAsync'> & WorkoutDatabase {
+  const adapter: ReturnType<typeof adapt> = {
     async execAsync(sql) { database.exec(sql); },
     async runAsync(sql: string, ...params: unknown[]) {
       const result = database.prepare(sql).run(...bindings(params));
@@ -31,5 +32,7 @@ export function adapt(database: DatabaseSync): Pick<SQLiteDatabase, 'execAsync' 
       try { await task(); database.exec('COMMIT'); }
       catch (error) { database.exec('ROLLBACK'); throw error; }
     },
+    async transaction(task) { await adapter.withTransactionAsync(() => task(adapter)); },
   };
+  return adapter;
 }

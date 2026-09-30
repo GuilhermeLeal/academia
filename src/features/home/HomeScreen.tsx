@@ -2,11 +2,11 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { AppButton } from '@/components/AppButton';
 import { AppCard } from '@/components/AppCard';
 import { AppScreen } from '@/components/AppScreen';
 import { AppText } from '@/components/AppText';
-import { demoWeek, demoWorkout } from '@/features/home/demo';
+import { demoWeek } from '@/features/home/demo';
+import { HomeWorkoutCard } from '@/features/workouts/HomeWorkoutCard';
 import { colors, opacity, radii, sizes, spacing } from '@/theme/tokens';
 
 export function HomeScreen() {
@@ -42,34 +42,7 @@ export function HomeScreen() {
         </View>
       </AppCard>
 
-      <View style={styles.section}>
-        <View style={styles.row}>
-          <AppText variant="heading" accessibilityRole="header">Seu próximo passo</AppText>
-          <AppText variant="caption" tone="secondary">Treino de exemplo</AppText>
-        </View>
-        <AppCard style={styles.workoutCard}>
-          <View style={styles.row}>
-            <View style={styles.tag}><AppText variant="eyebrow" tone="primary">PRÓXIMO TREINO</AppText></View>
-            <Ionicons name="barbell-outline" size={sizes.iconLarge} color={colors.primary} />
-          </View>
-          <View style={styles.workoutName}>
-            <AppText variant="title">{demoWorkout.name}</AppText>
-            <AppText tone="secondary">{demoWorkout.focus}</AppText>
-          </View>
-          <View style={styles.metrics}>
-            <View style={styles.inline}>
-              <Ionicons name="time-outline" size={sizes.iconSmall} color={colors.textSecondary} />
-              <AppText variant="label" tone="secondary">~{demoWorkout.estimatedMinutes} min</AppText>
-            </View>
-            <View style={styles.inline}>
-              <Ionicons name="layers-outline" size={sizes.iconSmall} color={colors.textSecondary} />
-              <AppText variant="label" tone="secondary">{demoWorkout.exerciseCount} exercícios</AppText>
-            </View>
-          </View>
-          <AppButton title="Iniciar treino" accessibilityHint="Abre uma prévia de demonstração. Nenhum treino será registrado." onPress={() => router.push('/workout-preview')} />
-          <AppText variant="caption" tone="secondary" style={styles.center}>Por enquanto, explore a prévia do treino.</AppText>
-        </AppCard>
-      </View>
+      <HomeWorkoutCard />
 
       <AppCard>
         <View style={styles.row}>
@@ -85,7 +58,7 @@ export function HomeScreen() {
         <AppText variant="caption" tone="secondary">{demoWeek.completed} de {demoWeek.goal} treinos na semana de exemplo.</AppText>
       </AppCard>
 
-      <AppText variant="caption" tone="secondary" style={styles.center}>Prévia do aplicativo · dados de demonstração</AppText>
+      <AppText variant="caption" tone="secondary" style={styles.center}>Ritmo e progresso semanal são exemplos visuais. Seus treinos salvos são reais.</AppText>
     </AppScreen>
   );
 }
@@ -105,11 +78,6 @@ const styles = StyleSheet.create({
   dayToday: { borderWidth: sizes.border, borderColor: colors.primary, backgroundColor: colors.primaryMuted },
   dayDot: { width: spacing.xs, height: spacing.xs, borderRadius: radii.pill, backgroundColor: colors.textSecondary },
   todayDot: { backgroundColor: colors.primary },
-  section: { gap: spacing.md },
-  workoutCard: { borderColor: colors.primaryMuted },
-  tag: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, backgroundColor: colors.primaryMuted, borderRadius: radii.sm },
-  workoutName: { gap: spacing.xs, paddingTop: spacing.sm },
-  metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.lg, paddingBottom: spacing.sm },
   center: { textAlign: 'center' },
   progressTrack: { height: sizes.progress, borderRadius: radii.pill, backgroundColor: colors.surfaceRaised, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: radii.pill, backgroundColor: colors.primary },

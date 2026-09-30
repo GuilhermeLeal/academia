@@ -18,14 +18,16 @@ export function ExerciseThumbnail({ imageUri }: { imageUri: string | null }) {
   );
 }
 
-type Props = { exercise: Exercise; onPress: (exercise: Exercise) => void };
+type Props = { exercise: Exercise; onPress: (exercise: Exercise) => void; selected?: boolean; selectionMode?: boolean };
 
-export const ExerciseCard = memo(function ExerciseCard({ exercise, onPress }: Props) {
+export const ExerciseCard = memo(function ExerciseCard({ exercise, onPress, selected = false, selectionMode = false }: Props) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${exercise.name}, ${exercise.muscleGroup}${exercise.equipment ? `, ${exercise.equipment}` : ''}${exercise.isCustom ? ', personalizado' : ''}`}
-      accessibilityHint={exercise.isCustom ? 'Abre a edição do exercício' : 'Abre os detalhes do exercício'}
+      accessibilityHint={selectionMode ? (selected ? 'Já está no treino' : 'Adiciona este exercício ao treino') : exercise.isCustom ? 'Abre a edição do exercício' : 'Abre os detalhes do exercício'}
+      accessibilityState={{ selected, disabled: selectionMode && selected }}
+      disabled={selectionMode && selected}
       onPress={() => onPress(exercise)}
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
@@ -35,7 +37,7 @@ export const ExerciseCard = memo(function ExerciseCard({ exercise, onPress }: Pr
         <AppText variant="caption" tone="secondary">{exercise.muscleGroup}{exercise.equipment ? ` · ${exercise.equipment}` : ''}</AppText>
         {exercise.isCustom && <AppText variant="caption" tone="primary">Personalizado</AppText>}
       </View>
-      <Ionicons name="chevron-forward" size={sizes.iconSmall} color={colors.textSecondary} />
+      <Ionicons name={selectionMode ? (selected ? 'checkmark-circle' : 'add-circle-outline') : 'chevron-forward'} size={sizes.icon} color={selectionMode ? colors.primary : colors.textSecondary} />
     </Pressable>
   );
 });

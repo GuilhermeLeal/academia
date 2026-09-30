@@ -42,6 +42,12 @@ export default function RootLayout() {
             <Stack.Screen name="exercises/index" />
             <Stack.Screen name="exercises/new" />
             <Stack.Screen name="exercises/[id]" />
+            <Stack.Screen name="workout/new" />
+            <Stack.Screen name="workout/[id]/index" />
+            <Stack.Screen name="workout/[id]/edit" />
+            <Stack.Screen name="session/[id]" />
+            <Stack.Screen name="session/[id]/exercise/[exerciseId]" />
+            <Stack.Screen name="session/[id]/summary" />
           </Stack>
         </LocalDatabaseProvider>
       </ThemeProvider>

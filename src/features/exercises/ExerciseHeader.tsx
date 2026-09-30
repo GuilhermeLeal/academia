@@ -5,12 +5,12 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { AppText } from '@/components/AppText';
 import { colors, opacity, radii, sizes, spacing } from '@/theme/tokens';
 
-export function ExerciseHeader({ title, library = false }: { title: string; library?: boolean }) {
+export function ExerciseHeader({ title, library = false, onBack }: { title: string; library?: boolean; onBack?: () => void }) {
   return (
     <View style={styles.header}>
       <Pressable
         accessibilityRole="button" accessibilityLabel="Voltar"
-        onPress={() => { if (router.canGoBack()) router.back(); else router.replace(library ? '/workouts' : '/exercises'); }}
+        onPress={onBack ?? (() => { if (router.canGoBack()) router.back(); else router.replace(library ? '/workouts' : '/exercises'); })}
         style={({ pressed }) => [styles.back, pressed && styles.pressed]}
       >
         <Ionicons name="arrow-back" color={colors.text} size={sizes.icon} />

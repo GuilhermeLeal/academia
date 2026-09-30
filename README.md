@@ -2,13 +2,13 @@
 
 Aplicativo mobile para treinos pessoais e familiares. A prioridade é abrir, encontrar o treino e continuar com poucos toques, mantendo uma interface escura, leve e previsível.
 
-**Estado: fase 2 — biblioteca e pesquisa de exercícios local.** A biblioteca permite pesquisar, criar e editar exercícios personalizados com persistência SQLite. A Home e a prévia de treino continuam demonstrativas; ainda não há login nem registro de treinos. O app funciona sem conta Supabase, sem `.env` e sem contratar infraestrutura.
+**Estado: fase 4 — execução básica de treinos.** Biblioteca, templates e sessões são persistidos no SQLite. Um treino salvo pode iniciar uma sessão real, registrar carga/repetições, concluir séries, adicionar séries extras e gerar um resumo ao finalizar. A Home prioriza a sessão em andamento; ritmo e progresso semanal ainda são demonstrações. Não há login ou sincronização. O app funciona sem conta Supabase, sem `.env` e sem contratar infraestrutura.
 
 ## Stack
 
 - React Native 0.86, React 19, Expo SDK 57 e TypeScript estrito.
-- Expo Router: Início, Treinos, Histórico e Conta, com biblioteca interna e rota de prévia.
-- `expo-sqlite`: migrations incrementais e biblioteca local de exercícios.
+- Expo Router: Início, Treinos, Histórico e Conta, com biblioteca e edição/detalhe de treinos em telas internas.
+- `expo-sqlite`: migrations incrementais, biblioteca e treinos locais.
 - Supabase: cliente tipado e configuração opcional para PostgreSQL/Auth futuros.
 - npm, Git e ESLint com a configuração oficial Expo.
 
@@ -36,15 +36,19 @@ npm ci
    ```
 
 4. No Expo Go, escolha **Scan QR code** e leia o QR code do terminal.
-5. O app abre na aba Início. `Iniciar treino` abre uma prévia; `Voltar` retorna à tela anterior. As quatro abas funcionam sem configurar a nuvem.
+5. O app abre na aba Início. Use **Treinos → + Criar treino**. As quatro abas funcionam sem configurar a nuvem.
+
+Para testar a fase 4: abra um treino salvo e toque em **Iniciar treino**. No card compacto, informe uma carga manual (decimais e zero aceitos), reps específicas maiores que zero e toque **Concluir exercício**; o resultado é aplicado às séries planejadas. Toque na seta para editar cada série separadamente e adicionar séries extras. Valores diferentes aparecem como **Personalizado** e só são substituídos pelo modo rápido após confirmação inline. A Home deve mostrar **Continuar treino**, e os registros devem permanecer ao voltar/reabrir. **Finalizar treino** mantém a confirmação discreta e o resumo. Não é possível iniciar duas sessões simultâneas.
+
+Para testar a criação da fase 3: informe um nome, toque em **Adicionar exercícios**, pesquise `supino` e selecione exercícios da biblioteca. Os já adicionados ficam marcados e não podem ser repetidos. Conclua a seleção, configure séries/reps/descanso e use as setas para ordenar. **Salvar treino** abre os detalhes; **Editar treino** permite modificar ou remover associações. Nos detalhes também há **Duplicar treino** e **Excluir treino**, com confirmação dentro da tela. Feche e reabra o app para conferir a persistência. Na fase atual, **Iniciar treino** abre a execução descrita acima.
 
 Para testar a fase 2: **Treinos → Biblioteca de exercícios**. Pesquise `supino` (quatro variantes), `elevacao`, `triceps frances` ou o alias `voador`. Limpar a busca exibe todo o catálogo. Toque em **Criar exercício**, informe nome/grupo muscular e, opcionalmente, equipamento. Ao salvar, a biblioteca pesquisa o nome salvo. Toque no card personalizado para editar. Feche e reabra o app para conferir a persistência.
 
 O catálogo inicial tem 19 exercícios de validação, somente leitura, e miniaturas placeholder. As imagens não são baixadas. A biblioteca consulta o SQLite local; nenhum caractere digitado gera chamada de rede.
 
-Se não conectar, permita Node.js na rede privada do Firewall do Windows, desative VPNs e confira se a rede permite comunicação entre dispositivos. Para limpar o cache do Metro: `npm start -- --clear`. Não é necessário Android Studio, EAS Build nem conta paga para este teste pelo Expo Go no Android.
+Se não conectar, permita Node.js na rede privada do Firewall do Windows, desative VPNs e confira se a rede permite comunicação entre dispositivos. Após adicionar rotas, encerre o Metro anterior e execute `npx expo start --clear`. Não é necessário Android Studio, EAS Build nem conta paga para este teste pelo Expo Go no Android.
 
-O Expo Go depende do servidor de desenvolvimento para carregar o aplicativo. A biblioteca salva seus exercícios localmente e funciona sem internet com o app carregado. Sessões de treino, cache remoto e sincronização ainda serão implementados. Um APK independente fica para uma etapa de distribuição.
+O Expo Go depende do servidor de desenvolvimento para carregar o aplicativo. Biblioteca, treinos e sessões salvam os dados no SQLite e funcionam localmente com o app carregado. Cache remoto e sincronização ainda serão implementados. Um APK independente fica para uma etapa de distribuição.
 
 O código também tem alvo iOS e comando de exportação; este ambiente Windows não compila um binário iOS. A validação inicial solicitada é Android.
 
@@ -72,22 +76,24 @@ Variáveis `EXPO_PUBLIC_*` entram no aplicativo e **não são secrets**. Nunca c
 ```text
 app/                          Rotas e layouts; nenhuma regra de treino
   (tabs)/                     Início, Treinos, Histórico, Conta
-  workout-preview.tsx         Prévia sem criação de sessão
+  workout-preview.tsx         Prévia histórica preservada da fundação
   exercises/                  Biblioteca, criação e consulta/edição por ID
+  workout/                    Criação, detalhe por ID e edição de treinos
+  session/                    Sessão em andamento e resumo por ID
 src/
   components/                 AppScreen, AppText, AppButton, AppCard, RecoveryScreen
   theme/                      Cores, espaçamentos, raios, tipografia e tamanhos
   features/
     auth/                     Contratos desacoplados e tela Conta
-    home/                     Home e fixtures de demonstração
-    workouts/                 Tela inicial de treinos
-    workout-session/          Prévia da experiência de treino
+    home/                     Home com treinos reais e ritmo semanal demonstrativo
+    workouts/                 Lista, detalhe, formulário, validação e persistência
+    workout-session/          Execução, registros locais, timer total e resumo
     history/                  Estado vazio do histórico
     exercises/                Modelo, seed, pesquisa SQLite, lista e formulário
   services/supabase/          Cliente lazy, configuração e tipo do schema vazio
-  db/                         Provider SQLite, migration 1 e migration 2 de exercícios
+  db/                         Provider, migrations 1–4 e transações de escrita
   types/                      Identificador interno de usuário
-tests/                        SQLite real, exercícios e validação de configuração
+tests/                        SQLite real, exercícios, treinos, sessões e configuração
 docs/                         Arquitetura e roteiro de validação
 ```
 
@@ -97,9 +103,19 @@ docs/                         Arquitetura e roteiro de validação
 
 A UI consome módulos de `features`. Rotas são pequenas e componentes base usam tokens centralizados: fundo preto, superfícies escuras e azul oficial `#6CADDF`. As cores ficam em JSON para serem compartilhadas com a configuração nativa do Expo; os outros tokens ficam em TypeScript.
 
-O SQLite abre `academia.db`, habilita WAL/foreign keys e executa migrations antes de exibir as telas. A migration 1 preserva `app_metadata`; a migration 2 adiciona `exercises`, `exercise_aliases`, índice de ordenação e seed idempotente. `PRAGMA user_version` passa a 2, com alteração e seed na mesma transação. Uma falha exibe recuperação sem apagar o banco. A biblioteca usa `useSQLiteContext()` e funções de consulta/gravação do módulo de exercícios.
+O SQLite abre `academia.db`, habilita WAL/foreign keys e executa migrations antes de exibir as telas. As migrations 1–3 permanecem intactas. A migration 4 adiciona `workout_sessions`, `session_exercises` e `session_sets`; `PRAGMA user_version` passa a 4 dentro da mesma transação. Uma falha exibe recuperação sem apagar o banco.
+
+Cada treino tem UUID, nome, descrição opcional e timestamps. Associações mantêm posição, séries, intervalo de reps e descanso em segundos. Foreign keys e constraints protegem referências, números e unicidade por exercício/posição no treino. Criar/editar/duplicar/excluir usa transações em conexão dedicada com foreign keys habilitadas antes de `BEGIN`; uma falha desfaz a operação inteira. Remover um exercício do treino ou excluir o treino preserva a biblioteca. A mesma biblioteca é reutilizada em modo de seleção no formulário, sem dependência adicional de drag-and-drop.
+
+Nome é obrigatório; séries/reps são inteiros positivos, reps mínimas não superam as máximas e descanso aceita zero. Um treino pode ser salvo sem exercícios e completado depois. Alterações do formulário ficam em memória até **Salvar treino**; sair pede confirmação, mas encerrar o processo não preserva rascunhos. A Home usa o primeiro treino por data de criação/UUID, sem agenda ou seleção automática por dia.
 
 A busca normaliza caixa, acentos e espaços na escrita e na consulta, pesquisa nome e aliases e prioriza nome exato/prefixo. Usa SQL parametrizado com `instr`, sem FTS ou dependência adicional. O debounce é de 100 ms durante a digitação; resultados atrasados são ignorados. `FlatList` virtualiza os cards e usa UUIDs estáveis; a busca fica fora da área rolável. Não há lista virtualizada dentro de `ScrollView`.
+
+Ao iniciar uma sessão, uma transação copia nome do treino, nome/ordem dos exercícios e configurações planejadas. Alterações posteriores no template ou catálogo não mudam o snapshot. Um índice parcial garante uma única sessão ativa. Carga aceita decimal não negativa, incluindo zero; reps realizadas são inteiras maiores que zero. O timer total deriva de `started_at`, portanto retorna ao tempo correto após troca de tela ou suspensão, sem timer de descanso/background avançado.
+
+Na tela principal, cada exercício tem um card compacto. O modo rápido aplica uma carga e reps específicas a todas as séries planejadas em uma transação; a faixa planejada nunca é gravada como resultado. A seta abre o modo detalhado, que edita os mesmos registros de `session_sets` e concentra séries extras. O card deriva o estado dos registros: valores iguais aparecem nos campos; valores diferentes aparecem como **Personalizado**. Uma aplicação rápida sobre séries planejadas personalizadas pede confirmação inline e nunca altera séries extras.
+
+Finalizar marca status/`finished_at` em transação e abre um resumo local. Sessões concluídas permanecem no banco para o histórico futuro, mas a aba Histórico ainda não as lista. Referências usam `ON DELETE SET NULL` com nomes em snapshot, de modo que excluir o template não destrói a sessão. A Home consulta primeiro a sessão ativa e oferece **Continuar treino**.
 
 Exercícios personalizados têm UUID gerado localmente pelo SQLite e timestamps ISO; edição preserva ID, criação e URI da imagem. Exercícios padrão são protegidos também pela condição `is_custom = 1` na escrita. Nesta fase, os personalizados pertencem à instalação local, sem identidade de usuário/sincronização; desinstalar ou limpar dados do app pode removê-los.
 
@@ -116,7 +132,7 @@ npm run export:android
 npm run export:ios
 ```
 
-- `check`: TypeScript, lint sem warnings e 16 testes de persistência, exercícios e configuração.
+- `check`: TypeScript, lint sem warnings e testes de persistência, exercícios, treinos, sessões e configuração.
 - `doctor`: compatibilidade Expo, configuração e dependências nativas.
 - `export:*`: gera bundle de produção em `dist/`; **não gera APK/IPA** e não substitui teste no celular.
 - Testes usam `node:test` e `node:sqlite`, sem instalar framework de testes. Node 22 pode emitir avisos de APIs experimentais; isso se limita ao executor local, não ao app.
@@ -129,11 +145,11 @@ O roteiro de teste em aparelho está em [docs/validation.md](docs/validation.md)
 
 ## Pronto nesta etapa
 
-Fundação preservada e biblioteca local com 19 exercícios, aliases, pesquisa, placeholders, criação/edição de personalizados, validação de campos e estados de carregamento, erro e nenhum resultado. Nenhuma dependência foi adicionada na fase 2.
+Fases 1–3 preservadas. A execução básica inclui modo rápido compacto, detalhamento por exercício, snapshot, uma sessão ativa, registros manuais, séries extras, timer total, retomada pela Home, finalização e resumo. Nenhuma dependência foi adicionada nesta refatoração.
 
 ## Próximas etapas
 
-Resolver autenticação/isolamento por usuário; modelar dados remotos e RLS; construir treinos; implementar sessão local com séries e cargas; adicionar histórico e estatísticas; definir sincronização e distribuição. Filtros, gestão de aliases personalizados, imagens oficiais e exclusão de exercícios também ficaram de fora desta fase. Streak real, gráficos, notificações e progressão automática não foram implementados.
+Implementar timer de descanso, notificações e comportamento avançado em background em fase própria. Resolver autenticação/isolamento por usuário, dados remotos/RLS, histórico completo, estatísticas, sincronização e distribuição posteriormente. Filtros, imagens oficiais e exclusão de exercícios também ficam para depois. Streak real, gráficos, calendário e progressão automática não foram implementados.
 
 ## Referências
 
