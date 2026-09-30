@@ -1,11 +1,12 @@
 import { router } from 'expo-router';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppButton } from '@/components/AppButton';
 import { AppCard } from '@/components/AppCard';
+import { AppPressable } from '@/components/AppPressable';
 import { AppText } from '@/components/AppText';
-import { colors, opacity, sizes, spacing } from '@/theme/tokens';
+import { colors, sizes, spacing } from '@/theme/tokens';
 
 import { useWorkoutData } from './useWorkoutData';
 
@@ -22,14 +23,14 @@ export function WorkoutsScreen() {
         </View>
         <FlatList data={status === 'ready' ? items : []} keyExtractor={(item) => item.id} contentContainerStyle={styles.list}
           renderItem={({ item }) => (
-            <Pressable accessibilityRole="button" accessibilityLabel={`${item.name}, ${item.exerciseCount} exercícios`}
-              style={({ pressed }) => pressed && styles.pressed} onPress={() => router.push({ pathname: '/workout/[id]', params: { id: item.id } })}>
+            <AppPressable accessibilityRole="button" accessibilityLabel={`${item.name}, ${item.exerciseCount} exercícios`}
+              onPress={() => router.push({ pathname: '/workout/[id]', params: { id: item.id } })}>
               <AppCard>
                 <AppText variant="heading">{item.name}</AppText>
                 {item.description && <AppText tone="secondary" numberOfLines={2}>{item.description}</AppText>}
                 <AppText variant="label" tone="primary">{item.exerciseCount} exercícios</AppText>
               </AppCard>
-            </Pressable>
+            </AppPressable>
           )}
           ListEmptyComponent={status === 'loading' ? <ActivityIndicator color={colors.primary} /> : (
             <AppCard>
@@ -48,5 +49,4 @@ const styles = StyleSheet.create({
   container: { flex: 1, width: '100%', maxWidth: sizes.contentMaxWidth },
   header: { padding: spacing.xl, gap: spacing.md },
   list: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xxl, gap: spacing.lg },
-  pressed: { opacity: opacity.pressed },
 });

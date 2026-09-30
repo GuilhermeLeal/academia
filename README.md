@@ -2,7 +2,7 @@
 
 Aplicativo mobile para treinos pessoais e familiares. A prioridade é abrir, encontrar o treino e continuar com poucos toques, mantendo uma interface escura, leve e previsível.
 
-**Estado: fase 4 — execução básica de treinos.** Biblioteca, templates e sessões são persistidos no SQLite. Um treino salvo pode iniciar uma sessão real, registrar carga/repetições, concluir séries, adicionar séries extras e gerar um resumo ao finalizar. A Home prioriza a sessão em andamento; ritmo e progresso semanal ainda são demonstrações. Não há login ou sincronização. O app funciona sem conta Supabase, sem `.env` e sem contratar infraestrutura.
+**Estado: fase 5 — histórico de treinos.** Biblioteca, templates e sessões são persistidos no SQLite. Um treino salvo pode iniciar uma sessão real, lembrar os últimos resultados concluídos de cada exercício, registrar carga/repetições, concluir séries, adicionar séries extras e gerar um resumo ao finalizar. A aba Histórico lista as sessões concluídas e abre seus resultados preservados. A Home prioriza a sessão em andamento; ritmo e progresso semanal ainda são demonstrações. Não há login ou sincronização. O app funciona sem conta Supabase, sem `.env` e sem contratar infraestrutura.
 
 ## Stack
 
@@ -12,7 +12,7 @@ Aplicativo mobile para treinos pessoais e familiares. A prioridade é abrir, enc
 - Supabase: cliente tipado e configuração opcional para PostgreSQL/Auth futuros.
 - npm, Git e ESLint com a configuração oficial Expo.
 
-Sem backend próprio, Docker, ORM, biblioteca de UI, gráficos, analytics ou serviços de SMS. Fontes do sistema e ícones Ionicons, sem imagens remotas nem animações adicionais.
+Sem backend próprio, Docker, ORM, biblioteca de UI, gráficos, analytics ou serviços de SMS. Fontes do sistema e ícones Ionicons, sem imagens remotas nem biblioteca adicional de animações.
 
 ## Instalar
 
@@ -38,7 +38,9 @@ npm ci
 4. No Expo Go, escolha **Scan QR code** e leia o QR code do terminal.
 5. O app abre na aba Início. Use **Treinos → + Criar treino**. As quatro abas funcionam sem configurar a nuvem.
 
-Para testar a fase 4: abra um treino salvo e toque em **Iniciar treino**. No card compacto, informe uma carga manual (decimais e zero aceitos), reps específicas maiores que zero e toque **Concluir exercício**; o resultado é aplicado às séries planejadas. Toque na seta para editar cada série separadamente e adicionar séries extras. Valores diferentes aparecem como **Personalizado** e só são substituídos pelo modo rápido após confirmação inline. A Home deve mostrar **Continuar treino**, e os registros devem permanecer ao voltar/reabrir. **Finalizar treino** mantém a confirmação discreta e o resumo. Não é possível iniciar duas sessões simultâneas.
+Para testar a fase 4: abra um treino salvo e toque em **Iniciar treino**. No card compacto, informe uma carga manual (decimais e zero aceitos), reps específicas maiores que zero e toque **Concluir exercício**; o resultado é aplicado às séries planejadas. Toque na seta para editar cada série separadamente e adicionar séries extras. Valores diferentes aparecem como **Personalizado** e só são substituídos pelo modo rápido após confirmação inline. A Home deve mostrar **Continuar treino**, e os registros devem permanecer ao voltar/reabrir. **Finalizar treino** mantém a confirmação discreta e o resumo. Ao iniciar outra sessão que contenha o mesmo exercício, inclusive em outro treino, as últimas séries realmente concluídas aparecem preenchidas por posição, mas continuam desmarcadas. Não é possível iniciar duas sessões simultâneas.
+
+Para testar a fase 5: conclua dois treinos com cargas/repetições diferentes e abra **Histórico**. Somente as sessões finalizadas devem aparecer, da mais recente para a mais antiga, com data, duração e totais realizados. Toque em um card para conferir início/fim e apenas as séries concluídas. Depois renomeie ou exclua o template original: os nomes e resultados já registrados no histórico devem permanecer iguais.
 
 Para testar a criação da fase 3: informe um nome, toque em **Adicionar exercícios**, pesquise `supino` e selecione exercícios da biblioteca. Os já adicionados ficam marcados e não podem ser repetidos. Conclua a seleção, configure séries/reps/descanso e use as setas para ordenar. **Salvar treino** abre os detalhes; **Editar treino** permite modificar ou remover associações. Nos detalhes também há **Duplicar treino** e **Excluir treino**, com confirmação dentro da tela. Feche e reabra o app para conferir a persistência. Na fase atual, **Iniciar treino** abre a execução descrita acima.
 
@@ -88,7 +90,7 @@ src/
     home/                     Home com treinos reais e ritmo semanal demonstrativo
     workouts/                 Lista, detalhe, formulário, validação e persistência
     workout-session/          Execução, registros locais, timer total e resumo
-    history/                  Estado vazio do histórico
+    history/                  Lista, detalhe e consultas do histórico local
     exercises/                Modelo, seed, pesquisa SQLite, lista e formulário
   services/supabase/          Cliente lazy, configuração e tipo do schema vazio
   db/                         Provider, migrations 1–4 e transações de escrita
@@ -115,7 +117,7 @@ Ao iniciar uma sessão, uma transação copia nome do treino, nome/ordem dos exe
 
 Na tela principal, cada exercício tem um card compacto. O modo rápido aplica uma carga e reps específicas a todas as séries planejadas em uma transação; a faixa planejada nunca é gravada como resultado. A seta abre o modo detalhado, que edita os mesmos registros de `session_sets` e concentra séries extras. O card deriva o estado dos registros: valores iguais aparecem nos campos; valores diferentes aparecem como **Personalizado**. Uma aplicação rápida sobre séries planejadas personalizadas pede confirmação inline e nunca altera séries extras.
 
-Finalizar marca status/`finished_at` em transação e abre um resumo local. Sessões concluídas permanecem no banco para o histórico futuro, mas a aba Histórico ainda não as lista. Referências usam `ON DELETE SET NULL` com nomes em snapshot, de modo que excluir o template não destrói a sessão. A Home consulta primeiro a sessão ativa e oferece **Continuar treino**.
+Finalizar marca status/`finished_at` em transação e abre um resumo local. A aba Histórico consulta somente sessões concluídas, ordena por `finished_at` decrescente e conta exercícios que possuam ao menos uma série concluída. O detalhe lê nomes e resultados do snapshot, exibindo somente séries concluídas; mudanças ou exclusões posteriores no template não alteram o registro. Referências usam `ON DELETE SET NULL`, de modo que excluir o template não destrói a sessão. A Home consulta primeiro a sessão ativa e oferece **Continuar treino**.
 
 Exercícios personalizados têm UUID gerado localmente pelo SQLite e timestamps ISO; edição preserva ID, criação e URI da imagem. Exercícios padrão são protegidos também pela condição `is_custom = 1` na escrita. Nesta fase, os personalizados pertencem à instalação local, sem identidade de usuário/sincronização; desinstalar ou limpar dados do app pode removê-los.
 
@@ -145,11 +147,13 @@ O roteiro de teste em aparelho está em [docs/validation.md](docs/validation.md)
 
 ## Pronto nesta etapa
 
-Fases 1–3 preservadas. A execução básica inclui modo rápido compacto, detalhamento por exercício, snapshot, uma sessão ativa, registros manuais, séries extras, timer total, retomada pela Home, finalização e resumo. Nenhuma dependência foi adicionada nesta refatoração.
+Fases 1–4 preservadas. O histórico local inclui lista de sessões concluídas, ordenação recente, duração e totais realizados, além do detalhe somente leitura com horários e séries concluídas do snapshot. Nenhuma migration ou dependência foi adicionada nesta etapa.
+
+O polimento visual usa microinterações curtas para pressão, conclusão, confirmações, progresso e transições internas. A configuração de redução de movimento do Android/iOS é respeitada, sem animações contínuas ou biblioteca adicional.
 
 ## Próximas etapas
 
-Implementar timer de descanso, notificações e comportamento avançado em background em fase própria. Resolver autenticação/isolamento por usuário, dados remotos/RLS, histórico completo, estatísticas, sincronização e distribuição posteriormente. Filtros, imagens oficiais e exclusão de exercícios também ficam para depois. Streak real, gráficos, calendário e progressão automática não foram implementados.
+Implementar timer de descanso, notificações e comportamento avançado em background em fase própria. Resolver autenticação/isolamento por usuário, dados remotos/RLS, estatísticas, sincronização e distribuição posteriormente. Filtros, imagens oficiais e exclusão de exercícios também ficam para depois. Streak real, gráficos, calendário e progressão automática não foram implementados.
 
 ## Referências
 

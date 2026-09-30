@@ -8,7 +8,9 @@ import { AppScreen } from '@/components/AppScreen';
 import { AppText } from '@/components/AppText';
 import { useWorkoutDatabase } from '@/features/workouts/useWorkoutData';
 import { WorkoutHeader } from '@/features/workouts/WorkoutHeader';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { colors, spacing } from '@/theme/tokens';
+import { animateNextLayout } from '@/utils/animations';
 
 import { SessionValidationError } from './model';
 import { addExtraSet, updateSessionSet } from './repository';
@@ -64,6 +66,7 @@ function DetailedExerciseLoader({ sessionId, exerciseId }: { sessionId: string; 
 
 function DetailedExerciseForm({ exercise, reload }: { exercise: SessionExercise; reload: () => void }) {
   const db = useWorkoutDatabase();
+  const reducedMotion = useReducedMotion();
   const [drafts, setDrafts] = useState<Record<string, SessionSetDraft>>(() => Object.fromEntries(
     exercise.sets.map((set) => [set.id, draftFrom(set)]),
   ));
@@ -97,7 +100,7 @@ function DetailedExerciseForm({ exercise, reload }: { exercise: SessionExercise;
   async function addSet() {
     if (busy) return;
     setBusy(true); setError(null);
-    try { await writeQueue.current; await addExtraSet(db, exercise.id); reload(); }
+    try { await writeQueue.current; await addExtraSet(db, exercise.id); animateNextLayout(reducedMotion); reload(); }
     catch { setError('Não foi possível adicionar a série. Tente novamente.'); }
     finally { setBusy(false); }
   }

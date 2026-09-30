@@ -10,13 +10,16 @@ import { migrateExercises } from '../src/db/migrations/002-exercises.ts';
 import { migrateWorkouts } from '../src/db/migrations/003-workouts.ts';
 import { DATABASE_VERSION, initializeDatabase } from '../src/db/migrations.ts';
 import { createCustomExercise, searchExercises, updateCustomExercise } from '../src/features/exercises/repository.ts';
+import { formatHistoryDuration, formatSetResult } from '../src/features/history/model.ts';
+import { getHistorySession, listCompletedSessions } from '../src/features/history/repository.ts';
 import {
   ActiveSessionError, elapsedSeconds, EmptySessionError, formatDuration,
   PersonalizedResultsError, SessionValidationError, summarizeExerciseResult,
 } from '../src/features/workout-session/model.ts';
 import {
   addExtraSet, applyQuickExerciseResult, finishWorkoutSession, getActiveSession,
-  getCompletedSessionSummary, getSession, startWorkoutSession, uncompletePlannedExercise, updateSessionSet,
+  getCompletedSessionSummary, getLastCompletedExerciseSets, getSession, startWorkoutSession,
+  uncompletePlannedExercise, updateSessionSet,
 } from '../src/features/workout-session/repository.ts';
 import { createWorkout, deleteWorkout, updateWorkout } from '../src/features/workouts/repository.ts';
 
@@ -44,6 +47,19 @@ async function createTemplate(db: ReturnType<typeof adapt>, name = 'Treino A') {
   return { id: await createWorkout(db, input), input, exercises: [first, second] };
 }
 
+async function createSingleExerciseTemplate(
+  db: ReturnType<typeof adapt>,
+  exerciseId: string,
+  name: string,
+  sets: number,
+) {
+  return createWorkout(db, {
+    name,
+    description: '',
+    exercises: [{ exerciseId, sets, repsMin: 8, repsMax: 12, restSeconds: 60 }],
+  });
+}
+
 test('migration 4 upgrades version 3 transactionally and preserves workouts and exercises', async () => {
   const database = new DatabaseSync(':memory:');
   const db = adapt(database);
@@ -64,7 +80,7 @@ test('migration 4 upgrades version 3 transactionally and preserves workouts and 
   } finally { database.close(); }
 });
 
-test('starts one active session with ordered exercises, planned sets and independent UUIDs', async () => {
+test('starts one active session with ordered exercises and leaves values empty without completed history', async () => {
   await withDatabase(async (db) => {
     const template = await createTemplate(db);
     const id = await startWorkoutSession(db, template.id);
@@ -144,6 +160,116 @@ test('quick mode accepts zero weight but requires positive specific repetitions'
     assert(updated.sets.every((set) => set.weight === 0 && set.reps === 12 && set.completed));
     await assert.rejects(applyQuickExerciseResult(db, exercise.id, { weight: 0, reps: 0 }), /maiores que zero/);
     assert((await getSession(db, id))?.exercises[1]?.sets.every((set) => set.reps === 12));
+  });
+});
+
+test('prefills uniform values from the latest completed exercise across different workouts', async () => {
+  await withDatabase(async (db) => {
+    const firstWorkout = await createTemplate(db, 'Treino A');
+    const secondWorkout = await createTemplate(db, 'Treino D');
+    const firstSessionId = await startWorkoutSession(db, firstWorkout.id);
+    const firstExercise = (await getSession(db, firstSessionId))?.exercises[0]; assert(firstExercise);
+    await applyQuickExerciseResult(db, firstExercise.id, { weight: 30.5, reps: 10 });
+    await finishWorkoutSession(db, firstSessionId);
+    await db.runAsync("UPDATE workout_sessions SET finished_at = '2026-01-01T10:00:00.000Z' WHERE id = ?", firstSessionId);
+
+    const secondSessionId = await startWorkoutSession(db, secondWorkout.id);
+    let secondExercise = (await getSession(db, secondSessionId))?.exercises[0]; assert(secondExercise);
+    assert(secondExercise.sets.every((set) => set.weight === 30.5 && set.reps === 10 && !set.completed));
+    assert.deepEqual(summarizeExerciseResult(secondExercise), {
+      kind: 'uniform', weight: 30.5, reps: 10, allPlannedCompleted: false,
+      completedSetCount: 0, totalSetCount: 3,
+    });
+
+    await applyQuickExerciseResult(db, secondExercise.id, { weight: 35, reps: 8 });
+    await finishWorkoutSession(db, secondSessionId);
+    await db.runAsync("UPDATE workout_sessions SET finished_at = '2026-01-02T10:00:00.000Z' WHERE id = ?", secondSessionId);
+
+    const thirdSessionId = await startWorkoutSession(db, firstWorkout.id);
+    secondExercise = (await getSession(db, thirdSessionId))?.exercises[0]; assert(secondExercise);
+    assert(secondExercise.sets.every((set) => set.weight === 35 && set.reps === 8 && !set.completed));
+  });
+});
+
+test('prefills personalized completed sets by position and leaves additional sets empty', async () => {
+  await withDatabase(async (db) => {
+    const custom = await createCustomExercise(db, { name: 'Supino da família', muscleGroup: 'Peitoral', equipment: 'Barra' });
+    const historyWorkoutId = await createSingleExerciseTemplate(db, custom.id, 'Histórico personalizado', 3);
+    const historySessionId = await startWorkoutSession(db, historyWorkoutId);
+    const historyExercise = (await getSession(db, historySessionId))?.exercises[0]; assert(historyExercise);
+    const [first, second, third] = historyExercise.sets; assert(first && second && third);
+    await updateSessionSet(db, first.id, { weight: 20, reps: 10, completed: true });
+    await updateSessionSet(db, second.id, { weight: 15, reps: 10, completed: true });
+    await updateSessionSet(db, third.id, { weight: 10, reps: 12, completed: true });
+    await finishWorkoutSession(db, historySessionId);
+
+    const nextWorkoutId = await createSingleExerciseTemplate(db, custom.id, 'Outro treino', 4);
+    const nextSessionId = await startWorkoutSession(db, nextWorkoutId);
+    const nextExercise = (await getSession(db, nextSessionId))?.exercises[0]; assert(nextExercise);
+    assert.deepEqual(nextExercise.sets.map(({ weight, reps, completed }) => ({ weight, reps, completed })), [
+      { weight: 20, reps: 10, completed: false },
+      { weight: 15, reps: 10, completed: false },
+      { weight: 10, reps: 12, completed: false },
+      { weight: null, reps: null, completed: false },
+    ]);
+    assert.equal(summarizeExerciseResult(nextExercise).kind, 'custom');
+  });
+});
+
+test('ignores active results when resolving the last completed exercise values', async () => {
+  await withDatabase(async (db) => {
+    const template = await createTemplate(db);
+    const completedSessionId = await startWorkoutSession(db, template.id);
+    const completedExercise = (await getSession(db, completedSessionId))?.exercises[0]; assert(completedExercise?.exerciseId);
+    await applyQuickExerciseResult(db, completedExercise.id, { weight: 22.5, reps: 11 });
+    await finishWorkoutSession(db, completedSessionId);
+
+    const activeSessionId = await startWorkoutSession(db, template.id);
+    const activeExercise = (await getSession(db, activeSessionId))?.exercises[0]; assert(activeExercise);
+    await applyQuickExerciseResult(db, activeExercise.id, { weight: 99.5, reps: 3 });
+
+    const previous = await getLastCompletedExerciseSets(db, completedExercise.exerciseId);
+    assert.equal(previous.length, 3);
+    assert(previous.every((set) => set.weight === 22.5 && set.reps === 11));
+  });
+});
+
+test('a completed session without executed sets does not replace the prior reference', async () => {
+  await withDatabase(async (db) => {
+    const template = await createTemplate(db);
+    const executedSessionId = await startWorkoutSession(db, template.id);
+    const executedExercise = (await getSession(db, executedSessionId))?.exercises[0]; assert(executedExercise);
+    await applyQuickExerciseResult(db, executedExercise.id, { weight: 0, reps: 14 });
+    await finishWorkoutSession(db, executedSessionId);
+    await db.runAsync("UPDATE workout_sessions SET finished_at = '2026-01-01T10:00:00.000Z' WHERE id = ?", executedSessionId);
+
+    const emptySessionId = await startWorkoutSession(db, template.id);
+    await finishWorkoutSession(db, emptySessionId, true);
+    await db.runAsync("UPDATE workout_sessions SET finished_at = '2026-01-02T10:00:00.000Z' WHERE id = ?", emptySessionId);
+
+    const nextSessionId = await startWorkoutSession(db, template.id);
+    const nextExercise = (await getSession(db, nextSessionId))?.exercises[0]; assert(nextExercise);
+    assert(nextExercise.sets.every((set) => set.weight === 0 && set.reps === 14 && !set.completed));
+  });
+});
+
+test('prefill runs only at session creation and never overwrites current edited values', async () => {
+  await withDatabase(async (db) => {
+    const template = await createTemplate(db);
+    const historySessionId = await startWorkoutSession(db, template.id);
+    const historyExercise = (await getSession(db, historySessionId))?.exercises[0]; assert(historyExercise);
+    await applyQuickExerciseResult(db, historyExercise.id, { weight: 40, reps: 9 });
+    await finishWorkoutSession(db, historySessionId);
+
+    const activeSessionId = await startWorkoutSession(db, template.id);
+    const activeExercise = (await getSession(db, activeSessionId))?.exercises[0];
+    const firstSet = activeExercise?.sets[0]; assert(firstSet);
+    await updateSessionSet(db, firstSet.id, { weight: 42.5, reps: 7, completed: false });
+
+    const reloaded = (await getSession(db, activeSessionId))?.exercises[0]?.sets[0];
+    assert.equal(reloaded?.weight, 42.5);
+    assert.equal(reloaded?.reps, 7);
+    assert.equal(reloaded?.completed, false);
   });
 });
 
@@ -269,6 +395,92 @@ test('active set records and extra series survive closing and reopening the data
     assert.match(basename(directory), /^academia-sessions-/);
     rmSync(directory, { recursive: true });
   }
+});
+
+test('history lists only completed sessions from newest to oldest with performed totals', async () => {
+  await withDatabase(async (db) => {
+    const template = await createTemplate(db);
+
+    const olderId = await startWorkoutSession(db, template.id);
+    const older = await getSession(db, olderId); assert(older);
+    const olderFirst = older.exercises[0]?.sets[0];
+    const olderSecond = older.exercises[1]?.sets[0];
+    assert(olderFirst && olderSecond);
+    await updateSessionSet(db, olderFirst.id, { weight: 30, reps: 10, completed: true });
+    await updateSessionSet(db, olderSecond.id, { weight: null, reps: 8, completed: true });
+    await finishWorkoutSession(db, olderId);
+    await db.runAsync(
+      "UPDATE workout_sessions SET started_at = '2026-09-28T10:00:00.000Z', finished_at = '2026-09-28T10:05:00.000Z' WHERE id = ?",
+      olderId,
+    );
+
+    const newerId = await startWorkoutSession(db, template.id);
+    const newerExercise = (await getSession(db, newerId))?.exercises[0]; assert(newerExercise);
+    await applyQuickExerciseResult(db, newerExercise.id, { weight: 42.5, reps: 9 }, true);
+    await finishWorkoutSession(db, newerId);
+    await db.runAsync(
+      "UPDATE workout_sessions SET started_at = '2026-09-30T18:00:00.000Z', finished_at = '2026-09-30T19:12:00.000Z' WHERE id = ?",
+      newerId,
+    );
+
+    const activeId = await startWorkoutSession(db, template.id);
+    await db.runAsync("UPDATE workout_sessions SET started_at = '2026-10-01T10:00:00.000Z' WHERE id = ?", activeId);
+
+    const history = await listCompletedSessions(db);
+    assert.deepEqual(history.map((item) => item.id), [newerId, olderId]);
+    assert.deepEqual(
+      history.map(({ exerciseCount, completedSetCount }) => ({ exerciseCount, completedSetCount })),
+      [{ exerciseCount: 1, completedSetCount: 3 }, { exerciseCount: 2, completedSetCount: 2 }],
+    );
+    assert.equal(await getHistorySession(db, activeId), null);
+    assert.equal(formatHistoryDuration(history[0]!.startedAt, history[0]!.finishedAt), '1h 12min');
+  });
+});
+
+test('history detail exposes only completed set snapshots and ignores later template changes', async () => {
+  await withDatabase(async (db) => {
+    const custom = await createCustomExercise(db, {
+      name: 'Supino histórico', muscleGroup: 'Peitoral', equipment: 'Barra',
+    });
+    const original: WorkoutInput = {
+      name: 'Treino preservado', description: '', exercises: [
+        { exerciseId: custom.id, sets: 3, repsMin: 8, repsMax: 10, restSeconds: 60 },
+      ],
+    };
+    const workoutId = await createWorkout(db, original);
+    const sessionId = await startWorkoutSession(db, workoutId);
+    const exercise = (await getSession(db, sessionId))?.exercises[0]; assert(exercise);
+    const [first, second, unfinished] = exercise.sets; assert(first && second && unfinished);
+    await updateSessionSet(db, first.id, { weight: 30.5, reps: 10, completed: true });
+    await updateSessionSet(db, second.id, { weight: 30.5, reps: 9, completed: true });
+    await updateSessionSet(db, unfinished.id, { weight: 99, reps: 1, completed: false });
+    await finishWorkoutSession(db, sessionId);
+
+    await updateCustomExercise(db, custom.id, {
+      name: 'Supino renomeado', muscleGroup: 'Peitoral', equipment: 'Máquina',
+    });
+    await updateWorkout(db, workoutId, {
+      name: 'Template alterado', description: '', exercises: [
+        { exerciseId: custom.id, sets: 1, repsMin: 20, repsMax: 20, restSeconds: 0 },
+      ],
+    });
+    await deleteWorkout(db, workoutId);
+    await db.runAsync('DELETE FROM exercises WHERE id = ?', custom.id);
+
+    const detail = await getHistorySession(db, sessionId); assert(detail);
+    assert.equal(detail.workoutName, 'Treino preservado');
+    assert.equal(detail.exerciseCount, 1); assert.equal(detail.completedSetCount, 2);
+    assert.equal(detail.exercises.length, 1);
+    assert.equal(detail.exercises[0]?.exerciseName, 'Supino histórico');
+    assert.deepEqual(
+      detail.exercises[0]?.sets.map(({ setNumber, weight, reps }) => ({ setNumber, weight, reps })),
+      [
+        { setNumber: 1, weight: 30.5, reps: 10 },
+        { setNumber: 2, weight: 30.5, reps: 9 },
+      ],
+    );
+    assert.equal(formatSetResult(30.5, 10), '30,5 kg × 10');
+  });
 });
 
 test('duration derives from timestamps and formats short and long sessions', () => {

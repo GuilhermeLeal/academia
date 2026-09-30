@@ -1,9 +1,10 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { memo, useState } from 'react';
-import { Image, Pressable, StyleSheet, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 
+import { AppPressable } from '@/components/AppPressable';
 import { AppText } from '@/components/AppText';
-import { colors, opacity, radii, sizes, spacing } from '@/theme/tokens';
+import { colors, radii, sizes, spacing } from '@/theme/tokens';
 
 import type { Exercise } from './types';
 
@@ -22,14 +23,14 @@ type Props = { exercise: Exercise; onPress: (exercise: Exercise) => void; select
 
 export const ExerciseCard = memo(function ExerciseCard({ exercise, onPress, selected = false, selectionMode = false }: Props) {
   return (
-    <Pressable
+    <AppPressable
       accessibilityRole="button"
       accessibilityLabel={`${exercise.name}, ${exercise.muscleGroup}${exercise.equipment ? `, ${exercise.equipment}` : ''}${exercise.isCustom ? ', personalizado' : ''}`}
       accessibilityHint={selectionMode ? (selected ? 'Já está no treino' : 'Adiciona este exercício ao treino') : exercise.isCustom ? 'Abre a edição do exercício' : 'Abre os detalhes do exercício'}
       accessibilityState={{ selected, disabled: selectionMode && selected }}
       disabled={selectionMode && selected}
       onPress={() => onPress(exercise)}
-      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+      style={styles.card}
     >
       <ExerciseThumbnail imageUri={exercise.imageUri} />
       <View style={styles.text}>
@@ -38,7 +39,7 @@ export const ExerciseCard = memo(function ExerciseCard({ exercise, onPress, sele
         {exercise.isCustom && <AppText variant="caption" tone="primary">Personalizado</AppText>}
       </View>
       <Ionicons name={selectionMode ? (selected ? 'checkmark-circle' : 'add-circle-outline') : 'chevron-forward'} size={sizes.icon} color={selectionMode ? colors.primary : colors.textSecondary} />
-    </Pressable>
+    </AppPressable>
   );
 });
 
@@ -54,5 +55,4 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryMuted, alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
   },
   image: { width: '100%', height: '100%' },
-  pressed: { opacity: opacity.pressed },
 });

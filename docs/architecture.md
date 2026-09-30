@@ -1,14 +1,16 @@
-# Arquitetura — fundação, exercícios, treinos e execução local
+# Arquitetura — fundação, exercícios, treinos, execução e histórico local
 
 ## Limites desta etapa
 
-O projeto é exclusivamente mobile. A fase 2 adicionou a biblioteca local, a fase 3 os templates e a fase 4 a execução básica no SQLite. A Home mostra uma sessão ativa ou um treino real; ritmo/progresso semanal continuam demonstrativos. Não há criação de usuários, sincronização ou histórico completo. A infraestrutura obrigatória custa R$ 0: nenhum serviço é provisionado e o teste Android ocorre por Expo Go na rede local.
+O projeto é exclusivamente mobile. A fase 2 adicionou a biblioteca local, a fase 3 os templates, a fase 4 a execução básica e a fase 5 o histórico no SQLite. A Home mostra uma sessão ativa ou um treino real; ritmo/progresso semanal continuam demonstrativos. Não há criação de usuários, sincronização, estatísticas ou calendário. A infraestrutura obrigatória custa R$ 0: nenhum serviço é provisionado e o teste Android ocorre por Expo Go na rede local.
 
 ## UI e navegação
 
-`app/` contém apenas layouts/rotas. As telas ficam em `src/features`, e os componentes base em `src/components`. Não há estado global, biblioteca de formulários, ORM ou camada genérica de repositórios. A Home consulta treinos ao ganhar foco e abre o detalhe do primeiro salvo; fixtures constantes permanecem apenas no ritmo/progresso semanal, com identificação de demonstração. Histórico permanece vazio, sem importar demonstrações como registros reais.
+`app/` contém apenas layouts/rotas. As telas ficam em `src/features`, e os componentes base em `src/components`. Não há estado global, biblioteca de formulários, ORM ou camada genérica de repositórios. A Home consulta treinos ao ganhar foco e abre o detalhe do primeiro salvo; fixtures constantes permanecem apenas no ritmo/progresso semanal, com identificação de demonstração. Histórico consulta exclusivamente sessões reais concluídas; demonstrações nunca viram registros.
 
 O tema é sempre escuro, incluindo o tema de navegação. `colors.json` é a fonte de cores tanto para Expo config quanto para componentes; `tokens.ts` concentra as demais medidas. Tipografia nativa, área segura, rolagem em telas pequenas, botões com altura mínima de 56 e textos com escala de acessibilidade preservada. Ícones têm importação direta de Ionicons.
+
+Microinterações usam somente `Animated`, `LayoutAnimation` e transições do Stack já disponíveis no React Native/Expo. Pressões combinam opacidade e escala curta; confirmações entram com fade/deslocamento; checks, cards concluídos e a barra de progresso mudam em 90–220 ms. Um hook compartilhado observa `AccessibilityInfo.reduceMotionChanged`: com redução de movimento ativa, transformações e transições de layout são removidas e mudanças de estado permanecem imediatas. Listas longas não executam animações de layout; esse recurso fica restrito às listas curtas de exercícios do editor e séries detalhadas.
 
 ## Persistência local
 
@@ -32,7 +34,7 @@ Criação e edição validam nome/grupo obrigatórios e comprimentos também for
 
 `imageUri` é suportado pelo componente de miniatura, incluindo fallback em erro; seed e formulário não fornecem/downloadam imagens. Filtros, exclusão e edição de aliases estão fora desta fase. Os personalizados são locais à instalação e ainda não são separados por conta. Limpar dados/desinstalar pode apagá-los; não há backup/sincronização implementados.
 
-Futuramente SQLite será a fonte imediata para a sessão ativa, séries/cargas, cache de exercícios e alterações pendentes. Isso ainda não existe. A inicialização é uma base, não uma promessa de resiliência offline do produto pronto.
+SQLite já é a fonte imediata para biblioteca, templates, sessão ativa e séries/cargas. Cache remoto, fila de alterações e sincronização ainda não existem. A persistência local atual não representa, sozinha, a resiliência offline do produto pronto.
 
 ## Treinos personalizados — fase 3
 
@@ -77,6 +79,10 @@ Um índice parcial único sobre o status `active` impede duas sessões ativas in
 
 `startWorkoutSession` executa em uma transação dedicada: verifica sessão ativa, lê o template ordenado, grava sessão/exercícios e cria as séries planejadas. Templates vazios não iniciam. Nome, exercício, ordem, séries, faixa de reps e descanso ficam copiados; futuras edições no template não alteram a sessão. Séries extras incrementam `set_number`, sem modificar `planned_sets`.
 
+Na mesma transação de início, `getLastCompletedExerciseSets` procura a ocorrência mais recente de cada `exercise_id` em qualquer sessão com status `completed`, ordenada por `finished_at`. O workout de origem não participa da prioridade. A ocorrência precisa conter ao menos uma série concluída com reps positivas; sessões ativas e exercícios não executados são ignorados. Somente séries realmente concluídas são copiadas por `set_number`, preservando carga decimal e zero, sempre com `completed = 0` na nova sessão. Se faltarem posições no histórico, as séries correspondentes permanecem vazias; posições excedentes são ignoradas.
+
+O preenchimento acontece uma única vez, durante a criação dos novos `session_sets`. Releituras da sessão não consultam o histórico e não substituem edições atuais. Resultados uniformes alimentam diretamente os campos do modo rápido; resultados diferentes continuam nos mesmos registros e aparecem no modo detalhado como **Personalizado**. Não existe cache paralelo de “última carga”, sugestão de progressão ou mutação de sessões históricas. Quando houver usuários, essa consulta deverá incluir o proprietário da sessão para manter o isolamento; autenticação não faz parte desta etapa.
+
 A tela ativa mostra um card compacto por exercício: nome, `séries × faixa planejada`, carga/reps rápidas, conclusão e seta de detalhe. Não mostra tabela, descanso ou séries extras. `applyQuickExerciseResult` valida carga/reps e atualiza, numa transação, somente os `session_sets` cujo `set_number <= planned_sets`; cada série recebe o resultado específico e fica concluída. A faixa planejada nunca é convertida em resultado. Desmarcar altera somente `completed`, preservando valores.
 
 O estado do card é derivado dos próprios `session_sets`, sem coluna ou armazenamento paralelo. Se todas as séries, inclusive extras, têm os mesmos valores, o card pode exibi-los. Qualquer diferença ou preenchimento parcial produz **Personalizado**. Antes de substituir séries planejadas com valores diferentes, o repositório lança `PersonalizedResultsError`; a UI pede confirmação inline. Mesmo após confirmação, séries extras não são alteradas.
@@ -85,7 +91,15 @@ A seta abre `/session/[id]/exercise/[exerciseId]`. Essa tela reutiliza `SessionS
 
 O timer visual calcula `agora - started_at` a cada segundo. Após suspensão ou navegação, o próximo cálculo usa o timestamp real, sem tentar manter um cronômetro nativo em background. Não há timer de descanso, notificações ou automação.
 
-Ao finalizar, a fila de campos é drenada e uma transação conta séries concluídas, define `finished_at` e muda o status. Zero séries exige confirmação inline. O resumo mostra duração, quantidade de exercícios e séries concluídas; a linha completa permanece no banco para um futuro histórico. Não há edição de sessão concluída. A conclusão libera o índice para iniciar outra sessão.
+Ao finalizar, a fila de campos é drenada e uma transação conta séries concluídas, define `finished_at` e muda o status. Zero séries exige confirmação inline. O resumo mostra duração, quantidade de exercícios e séries concluídas; a linha completa permanece no banco e passa a integrar o Histórico. Não há edição de sessão concluída. A conclusão libera o índice para iniciar outra sessão.
+
+## Histórico de treinos — fase 5
+
+A aba Histórico usa `FlatList`, refaz a consulta ao ganhar foco e mostra somente `workout_sessions.status = 'completed'`, ordenadas por `finished_at`, `started_at` e UUID em ordem decrescente. Cada card usa `workout_name`, timestamps e agregações das séries concluídas. Um exercício é contado como realizado apenas quando possui ao menos um `session_set.completed = 1`; a quantidade de séries segue a mesma condição. Sessões finalizadas sem séries continuam visíveis com totais zero. Sessões ativas nunca aparecem.
+
+A rota interna `/history/[id]` é somente leitura. O detalhe consulta a sessão concluída, seleciona exercícios que possuam resultados e carrega somente séries concluídas em ordem de exercício/número. Carga `NULL` permanece sem peso inventado; carga zero e decimais são preservados. Data e horários usam o fuso do dispositivo, e a duração deriva exclusivamente de `started_at`/`finished_at`.
+
+O histórico não consulta `workouts`, `workout_exercises` ou o nome atual em `exercises`. Ele lê `workout_name`, `exercise_name`, ordem, carga e reps armazenados no snapshot da sessão. Assim, renomear, reordenar ou excluir o template/catálogo depois da conclusão não modifica o que foi executado. As três tabelas da migration 4 já continham todos esses dados; `user_version` permanece 4 e nenhuma migration ou dependência foi necessária.
 
 ## Nuvem
 

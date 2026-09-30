@@ -2,6 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 
+import { AnimatedReveal } from '@/components/AnimatedReveal';
 import { AppButton } from '@/components/AppButton';
 import { AppCard } from '@/components/AppCard';
 import { AppScreen } from '@/components/AppScreen';
@@ -74,19 +75,18 @@ function ActiveSessionForm({ session, reload }: { session: WorkoutSession; reloa
       <AppText variant="title" tone="primary" accessibilityLabel={`Tempo de treino ${duration}`}>{duration}</AppText>
     </View>
     <AppText variant="caption" tone="secondary">Informe um resultado por exercício ou abra a seta para editar série por série.</AppText>
-    {session.exercises.map((exercise) => {
-      const resultKey = exercise.sets.map(
-        (set) => `${set.id}:${set.weight}:${set.reps}:${set.completed}`,
-      ).join('|');
-      return <QuickExerciseCard key={`${exercise.id}:${resultKey}`} sessionId={session.id} exercise={exercise} onSaved={reload} />;
-    })}
+    {session.exercises.map((exercise) => (
+      <QuickExerciseCard key={exercise.id} sessionId={session.id} exercise={exercise} onSaved={reload} />
+    ))}
     {error && <AppText tone="danger" accessibilityRole="alert">{error}</AppText>}
-    {confirmEmpty ? <AppCard>
-      <AppText variant="heading">Finalizar sem séries concluídas?</AppText>
-      <AppText tone="secondary">Nenhuma série está marcada como concluída. Os campos preenchidos continuarão salvos no resumo da sessão.</AppText>
-      <AppButton title="Finalizar mesmo assim" loading={busy} onPress={() => void finish(true)} />
-      <AppButton title="Continuar treino" variant="secondary" disabled={busy} onPress={() => setConfirmEmpty(false)} />
-    </AppCard> : <AppButton title="Finalizar treino" loading={busy} onPress={() => void finish(false)} />}
+    {confirmEmpty ? <AnimatedReveal>
+      <AppCard>
+        <AppText variant="heading">Finalizar sem séries concluídas?</AppText>
+        <AppText tone="secondary">Nenhuma série está marcada como concluída. Os campos preenchidos continuarão salvos no resumo da sessão.</AppText>
+        <AppButton title="Finalizar mesmo assim" loading={busy} onPress={() => void finish(true)} />
+        <AppButton title="Continuar treino" variant="secondary" disabled={busy} onPress={() => setConfirmEmpty(false)} />
+      </AppCard>
+    </AnimatedReveal> : <AppButton title="Finalizar treino" loading={busy} onPress={() => void finish(false)} />}
   </>;
 }
 

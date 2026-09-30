@@ -29,7 +29,7 @@ export function useWorkoutSession(id: string) {
   const [state, setState] = useState<{ session: WorkoutSession | null; status: 'loading' | 'ready' | 'error'; revision: number }>({ session: null, status: 'loading', revision: 0 });
   useFocusEffect(useCallback(() => {
     let active = true;
-    setState((value) => ({ ...value, status: 'loading', revision }));
+    setState((value) => ({ ...value, status: value.session ? 'ready' : 'loading', revision }));
     void getSession(db, id).then(
       (session) => { if (active) setState({ session, status: 'ready', revision }); },
       () => { if (active) setState({ session: null, status: 'error', revision }); },

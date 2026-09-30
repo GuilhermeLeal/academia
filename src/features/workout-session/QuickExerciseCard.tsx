@@ -1,18 +1,21 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Animated, StyleSheet, TextInput, View } from 'react-native';
 
+import { AnimatedReveal } from '@/components/AnimatedReveal';
 import { AppButton } from '@/components/AppButton';
 import { AppCard } from '@/components/AppCard';
+import { AppPressable } from '@/components/AppPressable';
 import { AppText } from '@/components/AppText';
 import { useWorkoutDatabase } from '@/features/workouts/useWorkoutData';
-import { colors, opacity, radii, sizes, spacing, typography } from '@/theme/tokens';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { colors, radii, sizes, spacing, typography } from '@/theme/tokens';
 
 import { PersonalizedResultsError, SessionValidationError, summarizeExerciseResult } from './model';
 import { applyQuickExerciseResult, uncompletePlannedExercise } from './repository';
 
-import type { SessionExercise } from './types';
+import type { ExerciseResultState, SessionExercise } from './types';
 
 const weightPattern = /^\d*(?:[.,]\d*)?$/;
 const repsPattern = /^\d*$/;
@@ -20,13 +23,33 @@ const repsPattern = /^\d*$/;
 type Props = { sessionId: string; exercise: SessionExercise; onSaved: () => void };
 
 export function QuickExerciseCard({ sessionId, exercise, onSaved }: Props) {
-  const db = useWorkoutDatabase();
   const result = summarizeExerciseResult(exercise);
+  const resultKey = exercise.sets.map(
+    (set) => `${set.id}:${set.weight}:${set.reps}:${set.completed}`,
+  ).join('|');
+  return <QuickExerciseCardContent key={resultKey} sessionId={sessionId} exercise={exercise} onSaved={onSaved} result={result} />;
+}
+
+function QuickExerciseCardContent({ sessionId, exercise, onSaved, result }: Props & { result: ExerciseResultState }) {
+  const db = useWorkoutDatabase();
+  const reducedMotion = useReducedMotion();
   const [weight, setWeight] = useState(result.weight === null ? '' : String(result.weight));
   const [reps, setReps] = useState(result.reps === null ? '' : String(result.reps));
   const [confirmOverwrite, setConfirmOverwrite] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [completion] = useState(() => new Animated.Value(0));
+
+  useEffect(() => {
+    const target = result.allPlannedCompleted ? 1 : 0;
+    if (reducedMotion) {
+      completion.setValue(target);
+      return;
+    }
+    const animation = Animated.timing(completion, { toValue: target, duration: 180, useNativeDriver: true });
+    animation.start();
+    return () => animation.stop();
+  }, [completion, reducedMotion, result.allPlannedCompleted]);
 
   function changeWeight(value: string) {
     if (weightPattern.test(value)) { setWeight(value); setConfirmOverwrite(false); setError(null); }
@@ -66,11 +89,14 @@ export function QuickExerciseCard({ sessionId, exercise, onSaved }: Props) {
 
   return (
     <AppCard style={styles.card}>
-      <Pressable
+      <Animated.View pointerEvents="none" style={[styles.completedSurface, {
+        opacity: completion.interpolate({ inputRange: [0, 1], outputRange: [0, 0.72] }),
+      }]} />
+      <AppPressable
         accessibilityRole="button" accessibilityLabel={`Abrir séries de ${exercise.exerciseName}`}
         accessibilityHint="Permite editar cada série separadamente"
         onPress={() => router.push({ pathname: '/session/[id]/exercise/[exerciseId]', params: { id: sessionId, exerciseId: exercise.id } })}
-        style={({ pressed }) => [styles.header, pressed && styles.pressed]}
+        style={styles.header}
       >
         <View style={styles.name}>
           <AppText variant="heading">{exercise.position + 1}. {exercise.exerciseName}</AppText>
@@ -79,11 +105,21 @@ export function QuickExerciseCard({ sessionId, exercise, onSaved }: Props) {
           </AppText>
         </View>
         <Ionicons name="chevron-forward" size={sizes.icon} color={colors.primary} />
-      </Pressable>
+      </AppPressable>
 
       <View style={styles.statusRow}>
         {result.kind === 'custom' && <View style={styles.badge}><AppText variant="caption" tone="primary">Personalizado</AppText></View>}
-        {result.allPlannedCompleted && <AppText variant="caption" tone="primary">Planejamento concluído</AppText>}
+        {result.allPlannedCompleted && <Animated.View style={[styles.completedStatus, {
+          opacity: completion,
+          transform: reducedMotion ? undefined : [{
+            scale: completion.interpolate({ inputRange: [0, 1], outputRange: [0.86, 1] }),
+          }],
+        }]}>
+          <View style={styles.completedCheck}>
+            <Ionicons name="checkmark" size={sizes.iconSmall} color={colors.onPrimary} />
+          </View>
+          <AppText variant="caption" tone="primary">Planejamento concluído</AppText>
+        </Animated.View>}
         {!result.allPlannedCompleted && result.completedSetCount > 0 && (
           <AppText variant="caption" tone="secondary">{result.completedSetCount}/{result.totalSetCount} séries concluídas</AppText>
         )}
@@ -111,12 +147,12 @@ export function QuickExerciseCard({ sessionId, exercise, onSaved }: Props) {
       </View>}
 
       {error && <AppText tone="danger" accessibilityRole="alert">{error}</AppText>}
-      {confirmOverwrite ? <View style={styles.confirm}>
+      {confirmOverwrite ? <AnimatedReveal style={styles.confirm}>
         <AppText variant="label">Substituir valores personalizados?</AppText>
         <AppText variant="caption" tone="secondary">Apenas as {exercise.plannedSets} séries planejadas receberão {weight.replace(',', '.')} kg × {reps} reps. Séries extras não serão alteradas.</AppText>
         <AppButton title="Aplicar às séries planejadas" loading={busy} onPress={() => void complete(true)} />
         <AppButton title="Cancelar" variant="secondary" disabled={busy} onPress={() => setConfirmOverwrite(false)} />
-      </View> : result.allPlannedCompleted
+      </AnimatedReveal> : result.allPlannedCompleted
         ? <AppButton title="Desmarcar exercício" variant="secondary" loading={busy} onPress={() => void uncomplete()} />
         : <AppButton title="Concluir exercício" loading={busy} onPress={() => void complete(false)} />}
     </AppCard>
@@ -124,11 +160,24 @@ export function QuickExerciseCard({ sessionId, exercise, onSaved }: Props) {
 }
 
 const styles = StyleSheet.create({
-  card: { gap: spacing.md },
+  card: { gap: spacing.md, overflow: 'hidden' },
+  completedSurface: {
+    position: 'absolute', top: 0, right: 0, bottom: 0, left: 0,
+    backgroundColor: colors.primaryMuted,
+    borderRadius: radii.lg,
+  },
   header: { minHeight: sizes.touchTarget, flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   name: { flex: 1, gap: spacing.xs },
-  pressed: { opacity: opacity.pressed },
   statusRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm },
+  completedStatus: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  completedCheck: {
+    width: sizes.icon,
+    height: sizes.icon,
+    borderRadius: radii.pill,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   badge: { alignSelf: 'flex-start', backgroundColor: colors.primaryMuted, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radii.pill },
   fields: { flexDirection: 'row', gap: spacing.md },
   field: { flex: 1, gap: spacing.xs },

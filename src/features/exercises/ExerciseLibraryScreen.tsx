@@ -1,10 +1,11 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppButton } from '@/components/AppButton';
+import { AppPressable } from '@/components/AppPressable';
 import { AppText } from '@/components/AppText';
 import { colors, radii, sizes, spacing, typography } from '@/theme/tokens';
 
@@ -57,9 +58,9 @@ export function LibraryContent({ initialQuery = '', selection }: { initialQuery?
               onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
             />
             {query.length > 0 && (
-              <Pressable accessibilityRole="button" accessibilityLabel="Limpar pesquisa" style={styles.clear} onPress={() => { setQuery(''); input.current?.focus(); }}>
+              <AppPressable accessibilityRole="button" accessibilityLabel="Limpar pesquisa" pressedScale={0.9} style={styles.clear} onPress={() => { setQuery(''); input.current?.focus(); }}>
                 <Ionicons name="close-circle" color={colors.textSecondary} size={sizes.icon} />
-              </Pressable>
+              </AppPressable>
             )}
           </View>
           {selection

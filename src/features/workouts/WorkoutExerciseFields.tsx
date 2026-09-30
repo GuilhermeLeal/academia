@@ -1,7 +1,8 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { StyleSheet, TextInput, View } from 'react-native';
 
 import { AppCard } from '@/components/AppCard';
+import { AppPressable } from '@/components/AppPressable';
 import { AppText } from '@/components/AppText';
 import { colors, opacity, radii, sizes, spacing, typography } from '@/theme/tokens';
 
@@ -29,14 +30,14 @@ export function WorkoutExerciseFields({ item, index, count, disabled, onChange, 
       <View style={styles.actions}>
         {([-1, 1] as const).map((direction) => {
           const unavailable = disabled || (direction === -1 ? index === 0 : index === count - 1);
-          return <Pressable key={direction} accessibilityRole="button" accessibilityLabel={`Mover ${item.name} para ${direction === -1 ? 'cima' : 'baixo'}`}
+          return <AppPressable key={direction} accessibilityRole="button" accessibilityLabel={`Mover ${item.name} para ${direction === -1 ? 'cima' : 'baixo'}`}
             disabled={unavailable} accessibilityState={{ disabled: unavailable }} onPress={() => onMove(direction)} style={[styles.action, unavailable && styles.disabled]}>
             <Ionicons name={direction === -1 ? 'arrow-up' : 'arrow-down'} size={sizes.icon} color={colors.primary} />
-          </Pressable>;
+          </AppPressable>;
         })}
-        <Pressable accessibilityRole="button" accessibilityLabel={`Remover ${item.name} deste treino`} disabled={disabled} onPress={onRemove} style={styles.remove}>
+        <AppPressable accessibilityRole="button" accessibilityLabel={`Remover ${item.name} deste treino`} disabled={disabled} onPress={onRemove} style={styles.remove}>
           <AppText variant="label" tone="danger">Remover</AppText>
-        </Pressable>
+        </AppPressable>
       </View>
     </AppCard>
   );

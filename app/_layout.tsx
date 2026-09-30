@@ -4,6 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { RecoveryScreen } from '@/components/RecoveryScreen';
 import { LocalDatabaseProvider } from '@/db/LocalDatabaseProvider';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { colors } from '@/theme/tokens';
 
 import type { ErrorBoundaryProps } from 'expo-router';
@@ -31,12 +32,18 @@ export function ErrorBoundary({ retry }: ErrorBoundaryProps) {
 }
 
 export default function RootLayout() {
+  const reducedMotion = useReducedMotion();
   return (
     <SafeAreaProvider>
       <StatusBar style="light" />
       <ThemeProvider value={navigationTheme}>
         <LocalDatabaseProvider>
-          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background }, animation: 'none' }}>
+          <Stack screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: colors.background },
+            animation: reducedMotion ? 'none' : 'fade',
+            animationDuration: 180,
+          }}>
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="workout-preview" />
             <Stack.Screen name="exercises/index" />
@@ -48,6 +55,7 @@ export default function RootLayout() {
             <Stack.Screen name="session/[id]" />
             <Stack.Screen name="session/[id]/exercise/[exerciseId]" />
             <Stack.Screen name="session/[id]/summary" />
+            <Stack.Screen name="history/[id]" />
           </Stack>
         </LocalDatabaseProvider>
       </ThemeProvider>

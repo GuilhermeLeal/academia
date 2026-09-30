@@ -4,12 +4,15 @@ import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { AnimatedReveal } from '@/components/AnimatedReveal';
 import { AppButton } from '@/components/AppButton';
 import { AppCard } from '@/components/AppCard';
 import { AppScreen } from '@/components/AppScreen';
 import { AppText } from '@/components/AppText';
 import { LibraryContent } from '@/features/exercises/ExerciseLibraryScreen';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { colors, radii, sizes, spacing, typography } from '@/theme/tokens';
+import { animateNextLayout } from '@/utils/animations';
 
 import { addDraftExercise, parseDraft, toDraft } from './draft';
 import { moveExercise, WorkoutValidationError } from './model';
@@ -30,6 +33,7 @@ export function WorkoutEditorScreen() {
 function WorkoutEditor({ id }: { id?: string }) {
   const db = useWorkoutDatabase();
   const navigation = useNavigation();
+  const reducedMotion = useReducedMotion();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [exercises, setExercises] = useState<DraftExercise[]>([]);
@@ -78,12 +82,14 @@ function WorkoutEditor({ id }: { id?: string }) {
 
   if (pendingAction) return (
     <AppScreen bottomInset>
-      <AppCard>
-        <AppText variant="heading">Descartar alterações?</AppText>
-        <AppText tone="secondary">As alterações deste formulário ainda não foram salvas.</AppText>
-        <AppButton title="Continuar editando" onPress={() => setPendingAction(null)} />
-        <AppButton title="Descartar e voltar" variant="secondary" onPress={() => navigation.dispatch(pendingAction)} />
-      </AppCard>
+      <AnimatedReveal>
+        <AppCard>
+          <AppText variant="heading">Descartar alterações?</AppText>
+          <AppText tone="secondary">As alterações deste formulário ainda não foram salvas.</AppText>
+          <AppButton title="Continuar editando" onPress={() => setPendingAction(null)} />
+          <AppButton title="Descartar e voltar" variant="secondary" onPress={() => navigation.dispatch(pendingAction)} />
+        </AppCard>
+      </AnimatedReveal>
     </AppScreen>
   );
 
@@ -113,15 +119,15 @@ function WorkoutEditor({ id }: { id?: string }) {
           {exercises.length === 0 && <AppText tone="secondary">Adicione exercícios da sua biblioteca. Você também pode salvar e completar este treino depois.</AppText>}
           {exercises.map((item, index) => <WorkoutExerciseFields key={item.exerciseId} item={item} index={index} count={exercises.length} disabled={saving}
             onChange={(updated) => { setExercises((items) => items.map((value) => value.exerciseId === updated.exerciseId ? updated : value)); setDirty(true); }}
-            onMove={(direction) => { setExercises((items) => moveExercise(items, index, direction)); setDirty(true); }}
-            onRemove={() => { setExercises((items) => items.filter((value) => value.exerciseId !== item.exerciseId)); setDirty(true); }} />)}
+            onMove={(direction) => { animateNextLayout(reducedMotion); setExercises((items) => moveExercise(items, index, direction)); setDirty(true); }}
+            onRemove={() => { animateNextLayout(reducedMotion); setExercises((items) => items.filter((value) => value.exerciseId !== item.exerciseId)); setDirty(true); }} />)}
           <AppButton title="Adicionar exercícios" variant="secondary" disabled={saving} onPress={() => setPicking(true)} />
           {error && <AppText tone="danger" accessibilityRole="alert">{error}</AppText>}
           <AppButton title="Salvar treino" loading={saving} onPress={() => void save()} />
           <AppText variant="caption" tone="secondary">As alterações só são gravadas ao salvar.</AppText>
         </>}
       </AppScreen>
-      <Modal visible={picking} onRequestClose={() => setPicking(false)} animationType="none" presentationStyle="fullScreen">
+      <Modal visible={picking} onRequestClose={() => setPicking(false)} animationType={reducedMotion ? 'none' : 'fade'} presentationStyle="fullScreen">
         <SafeAreaProvider>
           {picking && <LibraryContent selection={{ selectedIds: exercises.map((item) => item.exerciseId),
             onSelect: (exercise) => { setExercises((items) => addDraftExercise(items, exercise)); setDirty(true); }, onDone: () => setPicking(false) }} />}

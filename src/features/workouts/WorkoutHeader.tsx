@@ -1,17 +1,18 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
+import { AppPressable } from '@/components/AppPressable';
 import { AppText } from '@/components/AppText';
 import { colors, radii, sizes, spacing } from '@/theme/tokens';
 
-export function WorkoutHeader({ title }: { title: string }) {
+export function WorkoutHeader({ title, fallbackPath = '/workouts' }: { title: string; fallbackPath?: '/workouts' | '/history' }) {
   return (
     <View style={styles.row}>
-      <Pressable accessibilityRole="button" accessibilityLabel="Voltar" style={styles.back}
-        onPress={() => { if (router.canGoBack()) router.back(); else router.replace('/workouts'); }}>
+      <AppPressable accessibilityRole="button" accessibilityLabel="Voltar" pressedScale={0.9} style={styles.back}
+        onPress={() => { if (router.canGoBack()) router.back(); else router.replace(fallbackPath); }}>
         <Ionicons name="arrow-back" size={sizes.icon} color={colors.text} />
-      </Pressable>
+      </AppPressable>
       <AppText variant="title" accessibilityRole="header" style={styles.title}>{title}</AppText>
     </View>
   );

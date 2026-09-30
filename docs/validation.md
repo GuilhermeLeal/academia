@@ -1,4 +1,84 @@
-# Validação — fundação, exercícios, treinos e execução
+# Validação — fundação, exercícios, treinos, execução e histórico
+
+## Resultado da fase 5 — Histórico de Treinos
+
+- O schema e `PRAGMA user_version = 4` foram preservados; nenhuma migration foi necessária.
+- Nenhuma dependência foi adicionada e Supabase continua inativo.
+- A lista lê somente sessões concluídas, ordenadas da mais recente para a mais antiga.
+- Exercícios realizados e séries concluídas são agregados apenas de `session_sets.completed = 1`.
+- O detalhe usa exclusivamente os snapshots da sessão e omite séries não concluídas.
+- `npm run check`: TypeScript, ESLint e 48/48 testes aprovados.
+- `npm run doctor`: 21/21 verificações aprovadas.
+- Teste visual/físico Android pendente por ausência de aparelho/emulador neste ambiente.
+
+Os dois cenários adicionados cobrem filtro de sessões ativas, ordenação, duração, contagem de exercícios realizados/séries concluídas, carga decimal e reps reais, omissão de série incompleta e independência após renomear/excluir o template e o exercício originais.
+
+### Arquivos criados na fase 5
+
+```text
+app/history/[id].tsx
+src/features/history/types.ts
+src/features/history/model.ts
+src/features/history/repository.ts
+src/features/history/useHistory.ts
+src/features/history/HistorySessionCard.tsx
+src/features/history/HistoryDetailScreen.tsx
+```
+
+### Arquivos alterados na fase 5
+
+```text
+app/_layout.tsx
+src/features/history/HistoryScreen.tsx
+src/features/workout-session/WorkoutSessionSummaryScreen.tsx
+src/features/workouts/WorkoutHeader.tsx
+tests/workout-sessions.test.ts
+README.md
+docs/architecture.md
+docs/validation.md
+```
+
+### Fase 5 — roteiro Android
+
+1. Preserve os dados existentes, encerre qualquer Metro anterior e execute `npx expo start --clear`. Abra no Expo Go compatível com SDK 57.
+2. Antes de finalizar um treino, abra **Histórico** e confirme o estado “Nenhum treino concluído ainda.” Uma sessão em andamento não pode aparecer.
+3. No **Treino A**, conclua duas séries de Supino Reto com `30 kg × 10`, deixe uma série preenchida mas desmarcada e finalize.
+4. Volte ao **Histórico**. O card deve mostrar Treino A, a data local, a duração, `1 exercício` e `2 séries`.
+5. Conclua outro treino. Confira que ele aparece acima do Treino A, sem precisar reiniciar o aplicativo.
+6. Toque no Treino A. Confira nome, data, horários de início/fim e duração total. Em Supino Reto devem aparecer somente as duas séries concluídas, com carga e reps exatas; a série desmarcada não aparece.
+7. Finalize também uma sessão sem séries, confirmando o aviso. Ela deve aparecer com `0 exercícios · 0 séries`; seu detalhe informa que nenhuma série foi concluída.
+8. Renomeie o template e o exercício usados no Treino A, ou exclua o template. Reabra o registro histórico: nome do treino, nome do exercício, cargas e reps devem continuar os originais.
+9. Feche e reabra o app e confira que a ordem e o detalhe persistem. Nenhuma tela deve depender de internet ou `.env`.
+10. Teste lista longa, tela estreita, fonte ampliada, TalkBack e Voltar do Android. Cards precisam manter área de toque e leitura completas, sem animação contínua.
+
+Limites intencionais: esta fase não inclui gráficos, streak, estatísticas, calendário, autenticação, Supabase, sincronização nem progressão automática.
+
+## Melhoria — memória do último resultado por exercício
+
+- O schema e `PRAGMA user_version = 4` foram preservados; nenhuma migration ou tabela auxiliar foi criada.
+- A referência é o `exercise_id` na sessão concluída mais recente, independentemente do workout.
+- Somente séries concluídas com reps positivas são reaproveitadas; a nova sessão sempre começa desmarcada.
+- Carga decimal, carga zero, exercícios personalizados e valores diferentes por série são preservados.
+- Nenhuma dependência foi adicionada e a integração Supabase continua inativa.
+- `npm run check`: TypeScript e ESLint aprovados; 46/46 testes aprovados.
+- `npm run doctor`: 21/21 verificações aprovadas.
+- `npm run export:android`: bundle Hermes de produção gerado em `dist/` (não é APK).
+- Teste visual/físico Android pendente por ausência de aparelho/emulador neste ambiente.
+
+Os cinco cenários adicionados cobrem valores uniformes entre workouts e sua atualização futura; valores personalizados por posição em exercício customizado; séries novas sem histórico; sessão ativa ignorada; sessão concluída sem exercício executado ignorada; carga zero; e preservação de edição já feita na sessão atual. O cenário inicial existente agora explicita campos vazios quando não há histórico concluído.
+
+### Roteiro Android — último resultado
+
+1. Crie dois treinos diferentes contendo o mesmo exercício, por exemplo **Supino Reto**.
+2. Inicie o primeiro, registre `30,5 kg × 10 reps` no modo rápido, conclua o exercício e finalize a sessão.
+3. Inicie o segundo treino. O Supino Reto deve mostrar carga `30,5` e reps `10`, mas nenhuma série pode começar concluída.
+4. Altere para `35 kg × 8 reps`, conclua e finalize. Ao iniciar uma terceira sessão em qualquer treino com Supino Reto, `35 × 8` deve ser a nova referência.
+5. Finalize uma execução detalhada com `20 × 10`, `15 × 10` e `10 × 12`. Na próxima sessão, abra a seta: cada série deve trazer o valor da mesma posição, desmarcada, e o card deve indicar **Personalizado**.
+6. Faça o novo template ter uma série a mais. A série adicional deve permanecer sem carga e reps.
+7. Edite um valor pré-preenchido, navegue para outra tela e volte. A edição atual deve permanecer; o histórico não pode ser reaplicado sobre ela.
+8. Repita com carga `0` e com um exercício personalizado. Ambos devem seguir a mesma regra por UUID do exercício.
+
+O histórico navegável foi adicionado na fase 5 acima, sem progressão automática ou separação por usuário. Excluir um exercício elimina seu UUID do catálogo e suas referências históricas recebem `NULL`, conforme a regra existente de snapshot; isso não produz associação automática com outro exercício de mesmo nome.
 
 ## Resultado da fase 4
 

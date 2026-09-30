@@ -44,9 +44,9 @@ export function WorkoutSessionSummaryScreen() {
           <AppText>{summary.exerciseCount} {summary.exerciseCount === 1 ? 'exercício' : 'exercícios'}</AppText>
           <AppText>{summary.completedSetCount} {summary.completedSetCount === 1 ? 'série concluída' : 'séries concluídas'}</AppText>
         </AppCard>
-        <AppText variant="caption" tone="secondary">O resumo foi salvo localmente. O histórico completo será criado em uma fase futura.</AppText>
+        <AppText variant="caption" tone="secondary">O resumo foi salvo localmente e já está disponível no Histórico.</AppText>
         <AppButton title="Voltar à Home" onPress={() => router.replace('/')} />
-        <AppButton title="Ver treinos" variant="secondary" onPress={() => router.replace('/workouts')} />
+        <AppButton title="Ver histórico" variant="secondary" onPress={() => router.replace('/history')} />
       </>}
     </AppScreen>
   );

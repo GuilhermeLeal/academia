@@ -3,6 +3,7 @@ import { usePreventRemove } from 'expo-router/react-navigation';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator } from 'react-native';
 
+import { AnimatedReveal } from '@/components/AnimatedReveal';
 import { AppButton } from '@/components/AppButton';
 import { AppCard } from '@/components/AppCard';
 import { AppScreen } from '@/components/AppScreen';
@@ -96,12 +97,14 @@ function WorkoutDetail({ id }: { id: string }) {
         {error && <AppText tone="danger" accessibilityRole="alert">{error}</AppText>}
         <AppButton title="Duplicar treino" variant="secondary" disabled={busy} onPress={() => void act('duplicate')} />
         {busy && <ActivityIndicator color={colors.primary} />}
-        {confirmDelete ? <AppCard>
-          <AppText variant="heading">Excluir este treino?</AppText>
-          <AppText tone="secondary">O treino e suas configurações serão excluídos. Os exercícios continuarão na biblioteca.</AppText>
-          <AppButton title="Confirmar exclusão" disabled={busy} onPress={() => void act('delete')} />
-          <AppButton title="Cancelar" variant="secondary" disabled={busy} onPress={() => setConfirmDelete(false)} />
-        </AppCard> : <AppButton title="Excluir treino" variant="secondary" disabled={busy} onPress={() => setConfirmDelete(true)} />}
+        {confirmDelete ? <AnimatedReveal>
+          <AppCard>
+            <AppText variant="heading">Excluir este treino?</AppText>
+            <AppText tone="secondary">O treino e suas configurações serão excluídos. Os exercícios continuarão na biblioteca.</AppText>
+            <AppButton title="Confirmar exclusão" disabled={busy} onPress={() => void act('delete')} />
+            <AppButton title="Cancelar" variant="secondary" disabled={busy} onPress={() => setConfirmDelete(false)} />
+          </AppCard>
+        </AnimatedReveal> : <AppButton title="Excluir treino" variant="secondary" disabled={busy} onPress={() => setConfirmDelete(true)} />}
       </>}
     </AppScreen>
   );

@@ -16,6 +16,34 @@ export type SessionDatabase = SessionTransaction & {
 
 type SessionRow = Omit<WorkoutSession, 'exercises'>;
 type SetRow = Omit<SessionSet, 'completed'> & { completed: number };
+export type PreviousSetValue = Pick<SessionSet, 'setNumber' | 'weight' | 'reps'>;
+
+export async function getLastCompletedExerciseSets(
+  db: SessionTransaction,
+  exerciseId: string,
+): Promise<PreviousSetValue[]> {
+  return db.getAllAsync<PreviousSetValue>(
+    `WITH latest_exercise AS (
+       SELECT se.id
+       FROM session_exercises se
+       JOIN workout_sessions ws ON ws.id = se.session_id
+       WHERE se.exercise_id = ? AND ws.status = 'completed'
+         AND EXISTS (
+           SELECT 1 FROM session_sets completed_set
+           WHERE completed_set.session_exercise_id = se.id
+             AND completed_set.completed = 1 AND completed_set.reps > 0
+         )
+       ORDER BY ws.finished_at DESC, ws.started_at DESC, ws.id DESC, se.id DESC
+       LIMIT 1
+     )
+     SELECT ss.set_number AS setNumber, ss.weight, ss.reps
+     FROM session_sets ss
+     WHERE ss.session_exercise_id = (SELECT id FROM latest_exercise)
+       AND ss.completed = 1 AND ss.reps > 0
+     ORDER BY ss.set_number`,
+    exerciseId,
+  );
+}
 
 export async function getActiveSession(db: SessionTransaction): Promise<ActiveSessionSummary | null> {
   return db.getFirstAsync<ActiveSessionSummary>(
@@ -77,6 +105,9 @@ export async function startWorkoutSession(db: SessionDatabase, workoutId: string
       if (!session) throw new Error('Não foi possível iniciar o treino.');
       sessionId = session.id;
       for (const exercise of exercises) {
+        const previousSets = new Map(
+          (await getLastCompletedExerciseSets(tx, exercise.exerciseId)).map((set) => [set.setNumber, set]),
+        );
         const snapshot = await tx.getFirstAsync<{ id: string }>(
           `INSERT INTO session_exercises
            (session_id, exercise_id, exercise_name, position, planned_sets, planned_reps_min, planned_reps_max, planned_rest_seconds)
@@ -86,7 +117,12 @@ export async function startWorkoutSession(db: SessionDatabase, workoutId: string
         );
         if (!snapshot) throw new Error('Não foi possível preparar os exercícios da sessão.');
         for (let setNumber = 1; setNumber <= exercise.sets; setNumber += 1) {
-          await tx.runAsync('INSERT INTO session_sets (session_exercise_id, set_number) VALUES (?, ?)', snapshot.id, setNumber);
+          const previous = previousSets.get(setNumber);
+          await tx.runAsync(
+            `INSERT INTO session_sets (session_exercise_id, set_number, weight, reps, completed)
+             VALUES (?, ?, ?, ?, 0)`,
+            snapshot.id, setNumber, previous?.weight ?? null, previous?.reps ?? null,
+          );
         }
       }
     });

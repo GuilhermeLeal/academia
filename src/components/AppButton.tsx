@@ -1,5 +1,6 @@
-import { ActivityIndicator, Pressable, StyleSheet } from 'react-native';
+import { ActivityIndicator, StyleSheet } from 'react-native';
 
+import { AppPressable } from '@/components/AppPressable';
 import { AppText } from '@/components/AppText';
 import { colors, opacity, radii, sizes, spacing } from '@/theme/tokens';
 
@@ -14,16 +15,16 @@ type Props = Omit<PressableProps, 'children' | 'style'> & {
 export function AppButton({ title, variant = 'primary', loading = false, disabled, ...props }: Props) {
   const unavailable = disabled || loading;
   return (
-    <Pressable
+    <AppPressable
       {...props}
       accessibilityRole="button"
       accessibilityState={{ disabled: unavailable, busy: loading }}
       disabled={unavailable}
-      style={({ pressed }) => [styles.base, styles[variant], pressed && styles.pressed, unavailable && styles.disabled]}
+      style={[styles.base, styles[variant], unavailable && styles.disabled]}
     >
       {loading && <ActivityIndicator color={variant === 'primary' ? colors.onPrimary : colors.primary} />}
       <AppText variant="label" tone={variant === 'primary' ? 'onPrimary' : 'primary'}>{title}</AppText>
-    </Pressable>
+    </AppPressable>
   );
 }
 
@@ -35,6 +36,5 @@ const styles = StyleSheet.create({
   },
   primary: { backgroundColor: colors.primary },
   secondary: { backgroundColor: colors.primaryMuted },
-  pressed: { opacity: opacity.pressed },
   disabled: { opacity: opacity.disabled },
 });
