@@ -1,12 +1,12 @@
-# Arquitetura — fundação, exercícios, treinos, execução e histórico local
+# Arquitetura — fundação, treinos, histórico e estatísticas locais
 
 ## Limites desta etapa
 
-O projeto é exclusivamente mobile. A fase 2 adicionou a biblioteca local, a fase 3 os templates, a fase 4 a execução básica e a fase 5 o histórico no SQLite. A Home mostra uma sessão ativa ou um treino real; ritmo/progresso semanal continuam demonstrativos. Não há criação de usuários, sincronização, estatísticas ou calendário. A infraestrutura obrigatória custa R$ 0: nenhum serviço é provisionado e o teste Android ocorre por Expo Go na rede local.
+O projeto é exclusivamente mobile. A fase 2 adicionou a biblioteca local, a fase 3 os templates, a fase 4 a execução básica, a fase 5 o histórico e a fase 6 as estatísticas locais, agora com calendário mensal. A Home mostra uma sessão ativa ou um treino real e consistência semanal derivada do SQLite. Não há criação de usuários, sincronização, calendário externo ou estatísticas avançadas. A infraestrutura obrigatória custa R$ 0: nenhum serviço é provisionado e o teste Android ocorre por Expo Go na rede local.
 
 ## UI e navegação
 
-`app/` contém apenas layouts/rotas. As telas ficam em `src/features`, e os componentes base em `src/components`. Não há estado global, biblioteca de formulários, ORM ou camada genérica de repositórios. A Home consulta treinos ao ganhar foco e abre o detalhe do primeiro salvo; fixtures constantes permanecem apenas no ritmo/progresso semanal, com identificação de demonstração. Histórico consulta exclusivamente sessões reais concluídas; demonstrações nunca viram registros.
+`app/` contém apenas layouts/rotas. As telas ficam em `src/features`, e os componentes base em `src/components`. Não há estado global, biblioteca de formulários, ORM ou camada genérica de repositórios. A Home consulta treinos e estatísticas ao ganhar foco; a única fixture restante serve à prévia histórica da fundação. Histórico e estatísticas consultam exclusivamente sessões reais concluídas; demonstrações nunca viram registros.
 
 O tema é sempre escuro, incluindo o tema de navegação. `colors.json` é a fonte de cores tanto para Expo config quanto para componentes; `tokens.ts` concentra as demais medidas. Tipografia nativa, área segura, rolagem em telas pequenas, botões com altura mínima de 56 e textos com escala de acessibilidade preservada. Ícones têm importação direta de Ionicons.
 
@@ -100,6 +100,26 @@ A aba Histórico usa `FlatList`, refaz a consulta ao ganhar foco e mostra soment
 A rota interna `/history/[id]` é somente leitura. O detalhe consulta a sessão concluída, seleciona exercícios que possuam resultados e carrega somente séries concluídas em ordem de exercício/número. Carga `NULL` permanece sem peso inventado; carga zero e decimais são preservados. Data e horários usam o fuso do dispositivo, e a duração deriva exclusivamente de `started_at`/`finished_at`.
 
 O histórico não consulta `workouts`, `workout_exercises` ou o nome atual em `exercises`. Ele lê `workout_name`, `exercise_name`, ordem, carga e reps armazenados no snapshot da sessão. Assim, renomear, reordenar ou excluir o template/catálogo depois da conclusão não modifica o que foi executado. As três tabelas da migration 4 já continham todos esses dados; `user_version` permanece 4 e nenhuma migration ou dependência foi necessária.
+
+## Streak e estatísticas básicas — fase 6
+
+`features/stats` concentra tipos, cálculos puros, consultas e hooks focados. A rota interna `/stats` abre a tela Evolução pela Home, sem adicionar uma quinta aba. A Home removeu os valores demonstrativos e mantém um único card compacto com streak, quantidade de sessões na semana e o indicador de segunda a domingo já existente. Pressões, transição do Stack e redução de movimento continuam usando a infraestrutura atual.
+
+`listCompletedSessionTimes` lê apenas `workout_sessions.status = 'completed'`. Timestamps ISO são convertidos em JavaScript para datas locais do dispositivo; nenhum agrupamento UTC do SQLite nem API externa de calendário define as semanas. A segunda-feira local é calculada com `Date.getDay()` e operações de calendário com `setDate`, inclusive através de mudanças de horário de verão.
+
+Cada semana distinta com ao menos uma conclusão vira uma chave pela data local de sua segunda-feira. Se a semana atual possui treino, a streak parte dela; se ainda está vazia, parte da semana anterior, portanto a semana em andamento não interrompe uma sequência. A primeira semana passada ausente encerra a contagem. A maior streak percorre todos os blocos históricos de chaves semanais consecutivas. Contagens mensais usam o primeiro dia local do mês até o primeiro do próximo; a duração mensal soma `finished_at - started_at` das sessões concluídas no mês de sua finalização.
+
+A evolução lista somente exercícios com `exercise_id` preservado e ao menos uma série concluída em sessão concluída. O agrupamento é por UUID, incluindo exercícios personalizados. Última carga/reps vêm da última série concluída da sessão mais recente; maior carga considera todo o histórico concluído do exercício; a lista mostra até 20 séries recentes, da mais nova para a mais antiga. Séries incompletas e sessões ativas são ignoradas. Snapshots continuam somente leitura, e não há sugestão de progressão.
+
+Não foi adicionada biblioteca de gráficos. Os valores são apresentados em cards, seletor horizontal e linhas cronológicas; gráficos, metas diárias e ranking ficam fora desta fase. O schema da migration 4 já é suficiente, então `user_version` permanece 4 e nenhuma tabela de streak/estatísticas foi criada.
+
+### Calendário mensal e resumo geral
+
+A tela `/stats` mantém em estado somente o primeiro dia local do mês exibido. Anterior/próximo usa operações de calendário local, inclusive na passagem dezembro↔janeiro. O hook converte o início desse mês e o início do próximo para ISO e faz uma consulta parametrizada no intervalo `[início, próximo mês)`, sempre com `workout_sessions.status = 'completed'`. Essa mesma resposta monta a grade de segunda a domingo e calcula treinos, duração e quantidade de datas locais distintas; várias sessões no mesmo dia geram um único marcador. O dia atual é apenas uma indicação visual e meses vazios continuam exibindo a grade completa.
+
+Streak atual, maior streak e evolução por exercício continuam consultando todo o histórico concluído, portanto não dependem do mês selecionado. A rota interna `/stats/summary` também não cria uma aba: ela agrega todas as sessões concluídas, conta somente `session_sets.completed = 1` e considera um exercício realizado quando sua ocorrência na sessão tem pelo menos uma série concluída. Exercícios excluídos continuam participando pelo nome do snapshot; quando há UUID, ele é a chave estável de agrupamento.
+
+O resumo geral calcula primeiro/último treino pelos timestamps de conclusão, dias distintos por data local e média de treinos pelo número de semanas locais inclusivas entre o primeiro e o último treino. Nenhum valor é materializado: todos os números são recalculados do SQLite. O schema permanece na migration 4 e não houve dependência adicional.
 
 ## Nuvem
 

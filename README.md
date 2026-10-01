@@ -2,7 +2,7 @@
 
 Aplicativo mobile para treinos pessoais e familiares. A prioridade é abrir, encontrar o treino e continuar com poucos toques, mantendo uma interface escura, leve e previsível.
 
-**Estado: fase 5 — histórico de treinos.** Biblioteca, templates e sessões são persistidos no SQLite. Um treino salvo pode iniciar uma sessão real, lembrar os últimos resultados concluídos de cada exercício, registrar carga/repetições, concluir séries, adicionar séries extras e gerar um resumo ao finalizar. A aba Histórico lista as sessões concluídas e abre seus resultados preservados. A Home prioriza a sessão em andamento; ritmo e progresso semanal ainda são demonstrações. Não há login ou sincronização. O app funciona sem conta Supabase, sem `.env` e sem contratar infraestrutura.
+**Estado: fase 6 — estatísticas locais com calendário mensal.** Biblioteca, templates e sessões são persistidos no SQLite. Um treino salvo pode iniciar uma sessão real, registrar resultados e gerar um resumo ao finalizar. A aba Histórico lista as sessões concluídas; a Home deriva a semana e a streak desses registros, e a tela interna Estatísticas combina calendário, resumo mensal, streaks, evolução por exercício e um resumo geral do histórico. Não há login ou sincronização. O app funciona sem conta Supabase, sem `.env` e sem contratar infraestrutura.
 
 ## Stack
 
@@ -41,6 +41,8 @@ npm ci
 Para testar a fase 4: abra um treino salvo e toque em **Iniciar treino**. No card compacto, informe uma carga manual (decimais e zero aceitos), reps específicas maiores que zero e toque **Concluir exercício**; o resultado é aplicado às séries planejadas. Toque na seta para editar cada série separadamente e adicionar séries extras. Valores diferentes aparecem como **Personalizado** e só são substituídos pelo modo rápido após confirmação inline. A Home deve mostrar **Continuar treino**, e os registros devem permanecer ao voltar/reabrir. **Finalizar treino** mantém a confirmação discreta e o resumo. Ao iniciar outra sessão que contenha o mesmo exercício, inclusive em outro treino, as últimas séries realmente concluídas aparecem preenchidas por posição, mas continuam desmarcadas. Não é possível iniciar duas sessões simultâneas.
 
 Para testar a fase 5: conclua dois treinos com cargas/repetições diferentes e abra **Histórico**. Somente as sessões finalizadas devem aparecer, da mais recente para a mais antiga, com data, duração e totais realizados. Toque em um card para conferir início/fim e apenas as séries concluídas. Depois renomeie ou exclua o template original: os nomes e resultados já registrados no histórico devem permanecer iguais.
+
+Para testar a fase 6: conclua treinos em dias da semana atual e volte à Home. O indicador de segunda a domingo, a quantidade semanal e a streak devem refletir somente sessões finalizadas. Toque em **Ver estatísticas e evolução**: o calendário destaca cada dia local com treino concluído uma única vez, mesmo com várias sessões. Navegue entre meses e anos e confira que treinos, duração e dias treinados acompanham o mês exibido, enquanto streak atual/recorde não mudam. A evolução preserva cargas/reps reais por exercício. Ao final, **Ver resumo completo** abre somente os agregados de todo o histórico.
 
 Para testar a criação da fase 3: informe um nome, toque em **Adicionar exercícios**, pesquise `supino` e selecione exercícios da biblioteca. Os já adicionados ficam marcados e não podem ser repetidos. Conclua a seleção, configure séries/reps/descanso e use as setas para ordenar. **Salvar treino** abre os detalhes; **Editar treino** permite modificar ou remover associações. Nos detalhes também há **Duplicar treino** e **Excluir treino**, com confirmação dentro da tela. Feche e reabra o app para conferir a persistência. Na fase atual, **Iniciar treino** abre a execução descrita acima.
 
@@ -82,12 +84,14 @@ app/                          Rotas e layouts; nenhuma regra de treino
   exercises/                  Biblioteca, criação e consulta/edição por ID
   workout/                    Criação, detalhe por ID e edição de treinos
   session/                    Sessão em andamento e resumo por ID
+  stats/                      Resumo geral interno de todo o histórico
 src/
   components/                 AppScreen, AppText, AppButton, AppCard, RecoveryScreen
   theme/                      Cores, espaçamentos, raios, tipografia e tamanhos
   features/
     auth/                     Contratos desacoplados e tela Conta
-    home/                     Home com treinos reais e ritmo semanal demonstrativo
+    home/                     Home com treino ativo e consistência semanal real
+    stats/                    Calendário, streak, agregados e evolução por exercício
     workouts/                 Lista, detalhe, formulário, validação e persistência
     workout-session/          Execução, registros locais, timer total e resumo
     history/                  Lista, detalhe e consultas do histórico local
@@ -99,7 +103,7 @@ tests/                        SQLite real, exercícios, treinos, sessões e conf
 docs/                         Arquitetura e roteiro de validação
 ```
 
-`stats` será adicionado quando houver sua primeira implementação. Hooks específicos, como `useExerciseSearch`, ficam no próprio módulo. Não há pastas ou repositórios vazios antecipando o produto inteiro.
+Hooks específicos, como `useExerciseSearch` e `useStatsSummary`, ficam no próprio módulo. Não há pastas ou repositórios vazios antecipando o produto inteiro.
 
 ## Arquitetura
 
@@ -134,7 +138,7 @@ npm run export:android
 npm run export:ios
 ```
 
-- `check`: TypeScript, lint sem warnings e testes de persistência, exercícios, treinos, sessões e configuração.
+- `check`: TypeScript, lint sem warnings e testes de persistência, exercícios, treinos, sessões, estatísticas e configuração.
 - `doctor`: compatibilidade Expo, configuração e dependências nativas.
 - `export:*`: gera bundle de produção em `dist/`; **não gera APK/IPA** e não substitui teste no celular.
 - Testes usam `node:test` e `node:sqlite`, sem instalar framework de testes. Node 22 pode emitir avisos de APIs experimentais; isso se limita ao executor local, não ao app.
@@ -147,13 +151,13 @@ O roteiro de teste em aparelho está em [docs/validation.md](docs/validation.md)
 
 ## Pronto nesta etapa
 
-Fases 1–4 preservadas. O histórico local inclui lista de sessões concluídas, ordenação recente, duração e totais realizados, além do detalhe somente leitura com horários e séries concluídas do snapshot. Nenhuma migration ou dependência foi adicionada nesta etapa.
+Fases 1–5 preservadas. A Home mostra streak semanal, dias e treinos concluídos reais. A tela Estatísticas agora consulta o mês exibido para montar o calendário e seu resumo, preserva streaks globais e evolução por exercício, e oferece um resumo geral de todo o histórico concluído. Nenhuma migration ou dependência foi adicionada nesta etapa.
 
 O polimento visual usa microinterações curtas para pressão, conclusão, confirmações, progresso e transições internas. A configuração de redução de movimento do Android/iOS é respeitada, sem animações contínuas ou biblioteca adicional.
 
 ## Próximas etapas
 
-Implementar timer de descanso, notificações e comportamento avançado em background em fase própria. Resolver autenticação/isolamento por usuário, dados remotos/RLS, estatísticas, sincronização e distribuição posteriormente. Filtros, imagens oficiais e exclusão de exercícios também ficam para depois. Streak real, gráficos, calendário e progressão automática não foram implementados.
+Implementar timer de descanso, notificações e comportamento avançado em background em fase própria. Resolver autenticação/isolamento por usuário, dados remotos/RLS, estatísticas avançadas, sincronização e distribuição posteriormente. Filtros, imagens oficiais e exclusão de exercícios também ficam para depois. Gráficos, metas diárias e progressão automática não foram implementados.
 
 ## Referências
 

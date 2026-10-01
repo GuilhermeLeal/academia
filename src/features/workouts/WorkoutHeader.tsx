@@ -6,7 +6,7 @@ import { AppPressable } from '@/components/AppPressable';
 import { AppText } from '@/components/AppText';
 import { colors, radii, sizes, spacing } from '@/theme/tokens';
 
-export function WorkoutHeader({ title, fallbackPath = '/workouts' }: { title: string; fallbackPath?: '/workouts' | '/history' }) {
+export function WorkoutHeader({ title, fallbackPath = '/workouts' }: { title: string; fallbackPath?: '/' | '/workouts' | '/history' | '/stats' }) {
   return (
     <View style={styles.row}>
       <AppPressable accessibilityRole="button" accessibilityLabel="Voltar" pressedScale={0.9} style={styles.back}

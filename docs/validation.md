@@ -1,4 +1,105 @@
-# Validação — fundação, exercícios, treinos, execução e histórico
+# Validação — fundação, treinos, histórico e estatísticas
+
+## Melhoria da fase 6 — calendário mensal e resumo geral
+
+- O mês exibido controla tanto a grade quanto os três agregados mensais: treinos, duração e dias distintos.
+- Navegação local anterior/próximo atravessa anos; mês vazio continua válido e voltar ao mês atual restaura seus dados.
+- Cada data com uma ou mais sessões `completed` recebe um único marcador; sessões ativas são ignoradas.
+- Streak atual, maior streak e evolução por exercício permanecem globais e independentes do mês selecionado.
+- A rota interna `/stats/summary` agrega todo o histórico sem duplicar a lista do Histórico.
+- Totais gerais incluem treinos, duração, dias, séries concluídas, média semanal, maior streak, exercício mais realizado e datas extremas.
+- `PRAGMA user_version = 4` e as tabelas existentes foram preservados; nenhuma migration ou dependência foi adicionada.
+- Testes automatizados cobrem calendário, virada de ano, mês vazio, timezone local, agregados mensais e resumo geral.
+- `npm run check`: TypeScript, ESLint e 56/56 testes aprovados.
+- `npm run doctor`: 21/21 verificações aprovadas.
+- Teste visual/físico Android pendente por ausência de aparelho/emulador neste ambiente.
+
+### Arquivos desta melhoria
+
+```text
+app/stats/summary.tsx
+src/features/stats/MonthlyCalendar.tsx
+src/features/stats/OverallStatsScreen.tsx
+src/features/stats/StatsScreen.tsx
+src/features/stats/types.ts
+src/features/stats/model.ts
+src/features/stats/repository.ts
+src/features/stats/useStats.ts
+tests/stats.test.ts
+app/_layout.tsx
+src/features/workouts/WorkoutHeader.tsx
+README.md
+docs/architecture.md
+docs/validation.md
+```
+
+### Melhoria da fase 6 — roteiro Android
+
+1. Preserve os dados existentes, encerre o Metro anterior e execute `npx expo start --clear`. Abra pelo Expo Go compatível com SDK 57.
+2. Conclua duas sessões no mesmo dia e outra em um dia diferente. Em **Início → Ver estatísticas e evolução**, confira um único check no primeiro dia, outro no segundo e três treinos em dois dias treinados.
+3. Deixe uma sessão ativa: ela não pode marcar o calendário nem alterar os números. Finalize-a e volte à tela; o marcador e o resumo devem atualizar ao receber foco.
+4. Navegue para o mês anterior e seguinte. Título, grade, treinos, duração e dias devem mudar juntos; streak atual e recorde devem permanecer iguais.
+5. Atravesse dezembro→janeiro e janeiro→dezembro. Confira alinhamento dos dias da semana, meses sem treino e indicação discreta do dia atual ao retornar ao mês corrente.
+6. Selecione um exercício e confirme que a evolução continua com carga/reps históricas. O seletor e seus dados não devem ser filtrados pelo mês do calendário.
+7. Toque **Ver resumo completo**. Compare totais com o Histórico e confira primeiro/último treino, séries concluídas e exercício mais realizado. A tela não deve repetir a lista individual de sessões.
+8. Teste Voltar do app/Android, tela estreita, rolagem, fonte ampliada e TalkBack. Reinicie o app e confirme que tudo é recalculado dos mesmos registros locais, sem `.env` ou rede externa.
+
+Limites intencionais: sem API externa de calendário, gráfico, metas diárias, progressão automática, ranking/social, autenticação, Supabase ou notificações.
+
+## Resultado da fase 6 — streak semanal e estatísticas básicas
+
+- Home sem streak/progresso mockado: semana, dias e quantidade vêm de sessões `completed`.
+- Nova rota interna `/stats`, sem alteração nas quatro abas principais.
+- Semana local de segunda a domingo, com semana atual vazia preservando a streak anterior.
+- Contagens semanais/mensais, duração mensal, streak atual e maior streak são derivadas do histórico.
+- Evolução por `exercise_id`, incluindo personalizados, usa somente séries e sessões concluídas.
+- O schema e `PRAGMA user_version = 4` foram preservados; nenhuma migration ou tabela agregada foi criada.
+- Nenhuma dependência foi adicionada; calendário externo, gráfico e Supabase permanecem ausentes.
+- `npm run check`: TypeScript, ESLint e 53/53 testes aprovados.
+- `npm run doctor`: 21/21 verificações aprovadas.
+- `git diff --check`: aprovado.
+- Teste visual/físico Android pendente por ausência de aparelho/emulador neste ambiente.
+
+Os cinco testes novos cobrem segunda→domingo, semana atual vazia, semana passada vazia, sequências e recorde, contagens semanais/mensais, duração mensal, agrupamento por exercício personalizado, cargas/reps reais e exclusão de sessões ativas/séries incompletas.
+
+### Arquivos criados na fase 6
+
+```text
+app/stats.tsx
+src/features/stats/types.ts
+src/features/stats/model.ts
+src/features/stats/repository.ts
+src/features/stats/useStats.ts
+src/features/stats/StatsScreen.tsx
+tests/stats.test.ts
+```
+
+### Arquivos alterados na fase 6
+
+```text
+app/_layout.tsx
+src/features/home/HomeScreen.tsx
+src/features/home/demo.ts
+src/features/workouts/WorkoutHeader.tsx
+README.md
+docs/architecture.md
+docs/validation.md
+```
+
+### Fase 6 — roteiro Android
+
+1. Preserve os dados existentes, encerre o Metro anterior e execute `npx expo start --clear`. Abra pelo Expo Go compatível com SDK 57.
+2. Sem sessão concluída na semana, confira na Home `0 semanas`, os sete dias de segunda a domingo e `0 treinos`. Os números antigos de demonstração não podem aparecer.
+3. Inicie um treino e conclua séries, mas não finalize. Volte à Home: streak, dia e quantidade semanal não mudam, pois a sessão ainda está ativa.
+4. Finalize o treino e volte à Home. O dia local deve receber check, a semana deve mostrar `1 treino` e a streak deve passar a uma semana. Finalize outro treino no mesmo dia: a quantidade vira dois, mantendo um único check no dia e a mesma semana de streak.
+5. Toque em **Ver estatísticas e evolução**. Confira treinos na semana/mês, duração somada do mês, streak atual e maior streak. Use Voltar do app e do Android; nenhuma nova aba deve existir.
+6. Selecione um exercício concluído. A última carga/reps deve corresponder à última série concluída da sessão mais recente; a maior carga deve considerar todas as conclusões. Uma série preenchida mas desmarcada não aparece nem altera o máximo.
+7. Repita com carga zero, decimal e um exercício personalizado. Todos seguem a mesma regra por UUID. Uma sessão ativa com carga maior não pode afetar a evolução.
+8. Feche e reabra o app; Home e Evolução devem recalcular os mesmos valores do SQLite sem `.env` ou internet.
+9. Para validar múltiplas semanas no aparelho, mantenha os dados entre semanas reais ou use um banco de QA com `finished_at` controlado. Não altere relógio/dados de um aparelho com histórico real. Os limites segunda/domingo, lacuna passada e semana atual vazia estão cobertos automaticamente em `tests/stats.test.ts`.
+10. Teste tela estreita, fonte ampliada e TalkBack. O seletor horizontal, cards e linhas recentes devem permanecer legíveis e acionáveis.
+
+Limites intencionais: sem calendário externo, metas diárias, progressão automática, ranking/social, autenticação, Supabase, notificações ou gráficos.
 
 ## Resultado da fase 5 — Histórico de Treinos
 

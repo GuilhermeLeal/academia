@@ -56,6 +56,8 @@ export default function RootLayout() {
             <Stack.Screen name="session/[id]/exercise/[exerciseId]" />
             <Stack.Screen name="session/[id]/summary" />
             <Stack.Screen name="history/[id]" />
+            <Stack.Screen name="stats" />
+            <Stack.Screen name="stats/summary" />
           </Stack>
         </LocalDatabaseProvider>
       </ThemeProvider>
