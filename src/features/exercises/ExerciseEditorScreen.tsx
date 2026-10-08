@@ -1,5 +1,4 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet, TextInput, View } from 'react-native';
 
@@ -7,6 +6,7 @@ import { AppButton } from '@/components/AppButton';
 import { AppCard } from '@/components/AppCard';
 import { AppScreen } from '@/components/AppScreen';
 import { AppText } from '@/components/AppText';
+import { useWorkoutDatabase } from '@/features/workouts/useWorkoutData';
 import { colors, radii, sizes, spacing, typography } from '@/theme/tokens';
 
 import { ExerciseThumbnail } from './ExerciseCard';
@@ -24,7 +24,7 @@ export function ExerciseEditorScreen() {
 }
 
 function ExerciseEditorForm({ id }: { id?: string }) {
-  const db = useSQLiteContext();
+  const db = useWorkoutDatabase();
   const [exercise, setExercise] = useState<Exercise | null>(null);
   const [form, setForm] = useState<ExerciseInput>(emptyInput);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error' | 'missing'>(id ? 'loading' : 'ready');

@@ -1,12 +1,13 @@
 import { migrateExercises } from './migrations/002-exercises.ts';
 import { migrateWorkouts } from './migrations/003-workouts.ts';
 import { migrateWorkoutSessions } from './migrations/004-workout-sessions.ts';
+import { migrateUserOwnership } from './migrations/005-user-ownership.ts';
 
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 // This subset also lets the migration run against SQLite in local checks.
 export type MigrationDatabase = Pick<SQLiteDatabase, 'execAsync' | 'getFirstAsync' | 'runAsync' | 'withTransactionAsync'>;
-export const DATABASE_VERSION = 4;
+export const DATABASE_VERSION = 5;
 
 export async function initializeDatabase(db: MigrationDatabase): Promise<void> {
   await db.execAsync('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
@@ -51,6 +52,12 @@ export async function initializeDatabase(db: MigrationDatabase): Promise<void> {
     await db.withTransactionAsync(async () => {
       await migrateWorkoutSessions(db);
       await db.execAsync('PRAGMA user_version = 4;');
+    });
+  }
+  if (version.user_version < 5) {
+    await db.withTransactionAsync(async () => {
+      await migrateUserOwnership(db);
+      await db.execAsync('PRAGMA user_version = 5;');
     });
   }
 }

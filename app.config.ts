@@ -15,7 +15,7 @@ const config: ExpoConfig = {
   ios: { supportsTablet: false },
   android: { predictiveBackGestureEnabled: true },
   androidStatusBar: { barStyle: 'light-content', backgroundColor: colors.background },
-  plugins: ['expo-router', 'expo-sqlite', 'expo-font'],
+  plugins: ['expo-router', 'expo-sqlite', 'expo-secure-store', 'expo-font'],
   experiments: { typedRoutes: true },
 };
 

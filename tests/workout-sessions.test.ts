@@ -66,7 +66,11 @@ test('migration 4 upgrades version 3 transactionally and preserves workouts and 
   try {
     await db.execAsync("PRAGMA foreign_keys = ON; CREATE TABLE app_metadata (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL); INSERT INTO app_metadata VALUES ('foundation', 'ready');");
     await migrateExercises(db); await migrateWorkouts(db); await db.execAsync('PRAGMA user_version = 3');
-    const template = await createTemplate(db);
+    const template = await db.getFirstAsync<{ id: string }>(
+      `INSERT INTO workouts (name, description, created_at, updated_at)
+       VALUES ('Treino A', NULL, '2026-01-01', '2026-01-01') RETURNING id`,
+    );
+    assert(template);
     await assert.rejects(initializeDatabase({ ...db, async execAsync(sql) {
       await db.execAsync(sql);
       if (sql.includes('CREATE TABLE workout_sessions')) throw new Error('Session migration interrupted');
@@ -104,8 +108,9 @@ test('prevents two active sessions in repository and database constraints', asyn
     const activeId = await startWorkoutSession(db, first.id);
     await assert.rejects(startWorkoutSession(db, second.id), (error: unknown) => error instanceof ActiveSessionError && error.sessionId === activeId);
     await assert.rejects(db.runAsync(
-      "INSERT INTO workout_sessions (workout_id, workout_name, started_at, status) VALUES (?, 'Direto', ?, 'active')",
-      second.id, new Date().toISOString(),
+      `INSERT INTO workout_sessions (workout_id, workout_name, started_at, status, user_id)
+       VALUES (?, 'Direto', ?, 'active', ?)`,
+      second.id, new Date().toISOString(), db.userId,
     ), /UNIQUE/);
     assert.equal((await db.getFirstAsync<{ total: number }>("SELECT COUNT(*) AS total FROM workout_sessions WHERE status = 'active'"))?.total, 1);
   });

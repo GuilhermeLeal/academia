@@ -1,11 +1,16 @@
 import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { AppText } from '@/components/AppText';
 import { RecoveryScreen } from '@/components/RecoveryScreen';
 import { LocalDatabaseProvider } from '@/db/LocalDatabaseProvider';
+import { AuthProvider, useAuth } from '@/features/auth/AuthProvider';
+import { AuthScreen } from '@/features/auth/AuthScreen';
+import { LegacyDataGate } from '@/features/auth/LegacyDataGate';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
-import { colors } from '@/theme/tokens';
+import { colors, spacing } from '@/theme/tokens';
 
 import type { ErrorBoundaryProps } from 'expo-router';
 
@@ -37,30 +42,62 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <StatusBar style="light" />
       <ThemeProvider value={navigationTheme}>
-        <LocalDatabaseProvider>
-          <Stack screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: colors.background },
-            animation: reducedMotion ? 'none' : 'fade',
-            animationDuration: 180,
-          }}>
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="workout-preview" />
-            <Stack.Screen name="exercises/index" />
-            <Stack.Screen name="exercises/new" />
-            <Stack.Screen name="exercises/[id]" />
-            <Stack.Screen name="workout/new" />
-            <Stack.Screen name="workout/[id]/index" />
-            <Stack.Screen name="workout/[id]/edit" />
-            <Stack.Screen name="session/[id]" />
-            <Stack.Screen name="session/[id]/exercise/[exerciseId]" />
-            <Stack.Screen name="session/[id]/summary" />
-            <Stack.Screen name="history/[id]" />
-            <Stack.Screen name="stats" />
-            <Stack.Screen name="stats/summary" />
-          </Stack>
-        </LocalDatabaseProvider>
+        <AuthProvider>
+          <AuthenticatedRoutes reducedMotion={reducedMotion} />
+        </AuthProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );
 }
+
+function AuthenticatedRoutes({ reducedMotion }: { reducedMotion: boolean }) {
+  const { state } = useAuth();
+  if (state.status === 'restoring') {
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator color={colors.primary} />
+        <AppText tone="secondary">Restaurando sua sessão…</AppText>
+      </View>
+    );
+  }
+  if (state.status !== 'signed-in') return <AuthScreen />;
+  return (
+    <LocalDatabaseProvider>
+      <LegacyDataGate>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: colors.background },
+            animation: reducedMotion ? 'none' : 'fade',
+            animationDuration: 180,
+          }}
+        >
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="workout-preview" />
+          <Stack.Screen name="exercises/index" />
+          <Stack.Screen name="exercises/new" />
+          <Stack.Screen name="exercises/[id]" />
+          <Stack.Screen name="workout/new" />
+          <Stack.Screen name="workout/[id]/index" />
+          <Stack.Screen name="workout/[id]/edit" />
+          <Stack.Screen name="session/[id]" />
+          <Stack.Screen name="session/[id]/exercise/[exerciseId]" />
+          <Stack.Screen name="session/[id]/summary" />
+          <Stack.Screen name="history/[id]" />
+          <Stack.Screen name="stats" />
+          <Stack.Screen name="stats/summary" />
+        </Stack>
+      </LegacyDataGate>
+    </LocalDatabaseProvider>
+  );
+}
+
+const styles = StyleSheet.create({
+  loading: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.lg,
+    backgroundColor: colors.background,
+  },
+});

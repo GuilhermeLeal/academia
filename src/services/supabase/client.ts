@@ -1,10 +1,10 @@
 import 'react-native-url-polyfill/auto';
 
 import { createClient, processLock } from '@supabase/supabase-js';
-import Storage from 'expo-sqlite/kv-store';
 import { AppState } from 'react-native';
 
 import { getSupabaseConfiguration } from '@/services/supabase/config';
+import { secureSessionStorage } from '@/services/supabase/secureSessionStorage';
 
 import type { Database } from '@/services/supabase/database.types';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -20,7 +20,7 @@ export function getSupabaseClient(): SupabaseClient<Database> | null {
 
   client = createClient<Database>(configuration.url, configuration.publishableKey, {
     auth: {
-      storage: Storage,
+      storage: secureSessionStorage,
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: false,

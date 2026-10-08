@@ -38,8 +38,14 @@ test('migration 3 preserves version 2 exercises and metadata, rolls back on fail
     await db.execAsync("PRAGMA foreign_keys = ON; CREATE TABLE app_metadata (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL); INSERT INTO app_metadata VALUES ('foundation', 'ready'), ('family', 'preserved');");
     await migrateExercises(db);
     await db.execAsync('PRAGMA user_version = 2;');
-    const custom = await createCustomExercise(db, { name: 'Remada familiar', muscleGroup: 'Costas', equipment: '' });
-    const existing = await searchExercises(db, '');
+    const custom = await db.getFirstAsync<{ id: string }>(
+      `INSERT INTO exercises
+       (name, normalized_name, muscle_group, equipment, is_custom, created_at, updated_at)
+       VALUES ('Remada familiar', 'remada familiar', 'Costas', NULL, 1, '2026-01-01', '2026-01-01')
+       RETURNING id`,
+    );
+    assert(custom);
+    const existingCount = await db.getFirstAsync<{ total: number }>('SELECT COUNT(*) AS total FROM exercises');
     await assert.rejects(initializeDatabase({ ...db, async execAsync(sql) {
       await db.execAsync(sql);
       if (sql.includes('CREATE TABLE workouts')) throw new Error('Migration interrupted');
@@ -49,8 +55,8 @@ test('migration 3 preserves version 2 exercises and metadata, rolls back on fail
     await initializeDatabase(db);
     await initializeDatabase(db);
     assert.equal((await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version'))?.user_version, DATABASE_VERSION);
-    assert.deepEqual(await searchExercises(db, ''), existing);
-    assert.deepEqual(await getExercise(db, custom.id), custom);
+    assert.equal((await db.getFirstAsync<{ total: number }>('SELECT COUNT(*) AS total FROM exercises'))?.total, existingCount?.total);
+    assert.equal((await db.getFirstAsync<{ name: string }>('SELECT name FROM exercises WHERE id = ?', custom.id))?.name, 'Remada familiar');
     assert.equal((await db.getFirstAsync<{ value: string }>("SELECT value FROM app_metadata WHERE key = 'family'"))?.value, 'preserved');
     assert.deepEqual(await listWorkouts(db), []);
   } finally { database.close(); }
@@ -138,12 +144,12 @@ test('edits header and configurations, reorders retained associations and remove
 
 test('failed create or edit rolls back the header, removals, shifted positions and partially written associations', async () => {
   await withDatabase(async (db, ids) => {
-    await assert.rejects(createWorkout(db, inputFor([...ids, 'missing'])), /FOREIGN KEY/);
+    await assert.rejects(createWorkout(db, inputFor([...ids, 'missing'])), /FOREIGN KEY|owner mismatch/);
     assert.deepEqual(await listWorkouts(db), []);
     const id = await createWorkout(db, inputFor(ids));
     const before = await getWorkout(db, id); assert(before);
     const first = ids[0]; assert(first);
-    await assert.rejects(updateWorkout(db, id, { ...inputFor([first, 'missing']), name: 'Must roll back' }), /FOREIGN KEY/);
+    await assert.rejects(updateWorkout(db, id, { ...inputFor([first, 'missing']), name: 'Must roll back' }), /FOREIGN KEY|owner mismatch/);
     assert.deepEqual(await getWorkout(db, id), before);
     await assert.rejects(updateWorkout(db, id, inputFor([first, first])), WorkoutValidationError);
     assert.deepEqual(await getWorkout(db, id), before);
@@ -169,7 +175,7 @@ test('SQLite enforces foreign keys, unique exercises/positions and numeric const
     await assert.rejects(db.runAsync('UPDATE workout_exercises SET exercise_id = ? WHERE id = ?', first.exerciseId, second.id), /UNIQUE/);
     await assert.rejects(db.runAsync('UPDATE workout_exercises SET position = ? WHERE id = ?', first.position, second.id), /UNIQUE/);
     await assert.rejects(db.runAsync('DELETE FROM exercises WHERE id = ?', first.exerciseId), /FOREIGN KEY/);
-    await assert.rejects(db.runAsync('UPDATE workout_exercises SET workout_id = ? WHERE id = ?', 'missing', first.id), /FOREIGN KEY/);
+    await assert.rejects(db.runAsync('UPDATE workout_exercises SET workout_id = ? WHERE id = ?', 'missing', first.id), /FOREIGN KEY|owner mismatch/);
     for (const sql of [
       'sets = 0', 'sets = 1.5', 'reps_min = 0', 'reps_max = 1', 'rest_seconds = -1', 'position = -1',
     ]) await assert.rejects(db.runAsync(`UPDATE workout_exercises SET ${sql} WHERE id = ?`, first.id), /CHECK/);

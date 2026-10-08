@@ -1,8 +1,8 @@
-# Arquitetura — fundação, treinos, histórico e estatísticas locais
+# Arquitetura — app local-first com contas familiares
 
 ## Limites desta etapa
 
-O projeto é exclusivamente mobile. A fase 2 adicionou a biblioteca local, a fase 3 os templates, a fase 4 a execução básica, a fase 5 o histórico e a fase 6 as estatísticas locais, agora com calendário mensal. A Home mostra uma sessão ativa ou um treino real e consistência semanal derivada do SQLite. Não há criação de usuários, sincronização, calendário externo ou estatísticas avançadas. A infraestrutura obrigatória custa R$ 0: nenhum serviço é provisionado e o teste Android ocorre por Expo Go na rede local.
+O projeto é exclusivamente mobile e local-first. Biblioteca, templates, execução, histórico e estatísticas continuam no SQLite; Supabase é usado nesta fase somente para autenticação. Cada conta recebe `auth.users.id` como UUID definitivo e todos os dados privados locais são particionados por ele. Não há sincronização, schema remoto de treino, RLS dessas tabelas, calendário externo ou infraestrutura própria.
 
 ## UI e navegação
 
@@ -14,9 +14,15 @@ Microinterações usam somente `Animated`, `LayoutAnimation` e transições do S
 
 ## Persistência local
 
-Banco `academia.db` por `SQLiteProvider`. Inicialização assíncrona, WAL, foreign keys, migrations transacionais e `user_version = 4`. Os componentes de domínio são montados após a inicialização; não há consultas concorrentes enquanto a transação inicial está aberta. Uma versão de banco maior que a conhecida é rejeitada, sem downgrade automático ou exclusão de dados.
+Banco `academia.db` por `SQLiteProvider`. Inicialização assíncrona, WAL, foreign keys, migrations transacionais e `user_version = 5`. Os componentes de domínio são montados após a inicialização e somente depois da restauração da identidade. Uma versão de banco maior que a conhecida é rejeitada, sem downgrade automático ou exclusão de dados.
 
 A migration 1 de `app_metadata(key, value)` permanece intacta. A migration 2, `src/db/migrations/002-exercises.ts`, cria `exercises`, `exercise_aliases` e o índice `(normalized_name, id)`. Estrutura, seed e incremento de versão são aplicados na mesma transação. Atualizar da versão 1 preserva os metadados existentes. Novas versões deverão adicionar migrations explícitas e ordenadas, preservando os dados existentes. Nunca editar uma migration já distribuída para mudar o schema. Consultas com entrada do usuário utilizam parâmetros, não interpolação SQL.
+
+A migration 5 preserva integralmente as migrations 1–4 e adiciona `user_id` anulável a `exercises`, `workouts`, `workout_exercises`, `workout_sessions`, `session_exercises` e `session_sets`. `NULL` significa catálogo padrão compartilhado ou dado legado ainda não vinculado; novos exercícios personalizados e todas as novas raízes privadas recebem sempre o UUID autenticado. Índices compostos por `user_id` mantêm busca, listagem e histórico locais. O índice parcial anterior foi substituído por outro que permite uma sessão `active` por usuário.
+
+Triggers validam ownership na escrita: associação de treino deve combinar com o dono do treino e com exercício padrão compartilhado ou exercício personalizado do mesmo usuário; snapshots e séries precisam combinar com o dono da sessão. Os repositories repetem o filtro em todo `SELECT`, `INSERT`, `UPDATE` e `DELETE`, portanto o isolamento não depende da UI. A conexão transacional recebe o mesmo `userId` do contexto autenticado.
+
+`local_users` registra a identidade observada no aparelho e `legacy_import_decisions` torna a escolha por conta idempotente. Após o primeiro login, dados privados com `user_id IS NULL` não aparecem nas consultas normais. O gate oferece vínculo explícito ou adiamento. O vínculo atualiza toda a cadeia numa transação, mantém IDs/timestamps/snapshots e pode ser retomado pela tela Conta; uma falha desfaz todas as atribuições.
 
 ## Biblioteca de exercícios — fase 2
 
@@ -32,7 +38,7 @@ Normalização por Unicode NFD, remoção de marcas, lowercase e espaços unifor
 
 Criação e edição validam nome/grupo obrigatórios e comprimentos também fora da UI. O formulário mantém os campos em caso de erro, bloqueia envio concorrente e confirma sucesso retornando à biblioteca após a escrita. O `UPDATE` só afeta `is_custom = 1`; catálogo padrão aparece em detalhes somente leitura. ID, data de criação e imagem são preservados na edição. Gravações são comandos atômicos, sem transação longa durante a interação.
 
-`imageUri` é suportado pelo componente de miniatura, incluindo fallback em erro; seed e formulário não fornecem/downloadam imagens. Filtros, exclusão e edição de aliases estão fora desta fase. Os personalizados são locais à instalação e ainda não são separados por conta. Limpar dados/desinstalar pode apagá-los; não há backup/sincronização implementados.
+`imageUri` é suportado pelo componente de miniatura, incluindo fallback em erro; seed e formulário não fornecem/downloadam imagens. Filtros, exclusão e edição de aliases estão fora desta fase. Personalizados são separados por conta no SQLite. Limpar dados/desinstalar pode apagá-los; não há backup/sincronização implementados.
 
 SQLite já é a fonte imediata para biblioteca, templates, sessão ativa e séries/cargas. Cache remoto, fila de alterações e sincronização ainda não existem. A persistência local atual não representa, sozinha, a resiliência offline do produto pronto.
 
@@ -61,7 +67,7 @@ O rascunho é estado local do formulário, sem escrita enquanto se digita. A sel
 
 Lista, detalhe e Home refazem a consulta ao ganhar foco, descartando respostas antigas no cleanup. O editor carrega os dados uma vez por abertura para não sobrescrever o rascunho ao voltar do seletor. A Home escolhe o primeiro treino por `created_at, id`, sem agenda, duração estimada, calendário ou lógica de dias. Renomear um exercício personalizado na biblioteca reflete nos detalhes do treino pela associação, sem copiar o catálogo.
 
-Templates e sessões pertencem à instalação, sem separação por usuário nem backup; Supabase continua intacto e inativo nesta feature.
+Templates e sessões pertencem ao UUID autenticado dentro da instalação, ainda sem backup ou sincronização remota.
 
 ## Execução básica — fase 4
 
@@ -81,7 +87,7 @@ Um índice parcial único sobre o status `active` impede duas sessões ativas in
 
 Na mesma transação de início, `getLastCompletedExerciseSets` procura a ocorrência mais recente de cada `exercise_id` em qualquer sessão com status `completed`, ordenada por `finished_at`. O workout de origem não participa da prioridade. A ocorrência precisa conter ao menos uma série concluída com reps positivas; sessões ativas e exercícios não executados são ignorados. Somente séries realmente concluídas são copiadas por `set_number`, preservando carga decimal e zero, sempre com `completed = 0` na nova sessão. Se faltarem posições no histórico, as séries correspondentes permanecem vazias; posições excedentes são ignoradas.
 
-O preenchimento acontece uma única vez, durante a criação dos novos `session_sets`. Releituras da sessão não consultam o histórico e não substituem edições atuais. Resultados uniformes alimentam diretamente os campos do modo rápido; resultados diferentes continuam nos mesmos registros e aparecem no modo detalhado como **Personalizado**. Não existe cache paralelo de “última carga”, sugestão de progressão ou mutação de sessões históricas. Quando houver usuários, essa consulta deverá incluir o proprietário da sessão para manter o isolamento; autenticação não faz parte desta etapa.
+O preenchimento acontece uma única vez, durante a criação dos novos `session_sets`. Releituras da sessão não consultam o histórico e não substituem edições atuais. Resultados uniformes alimentam diretamente os campos do modo rápido; resultados diferentes continuam nos mesmos registros e aparecem no modo detalhado como **Personalizado**. Não existe cache paralelo de “última carga”, sugestão de progressão ou mutação de sessões históricas. A consulta inclui o proprietário da sessão e nunca reutiliza carga/reps de outra conta.
 
 A tela ativa mostra um card compacto por exercício: nome, `séries × faixa planejada`, carga/reps rápidas, conclusão e seta de detalhe. Não mostra tabela, descanso ou séries extras. `applyQuickExerciseResult` valida carga/reps e atualiza, numa transação, somente os `session_sets` cujo `set_number <= planned_sets`; cada série recebe o resultado específico e fica concluída. A faixa planejada nunca é convertida em resultado. Desmarcar altera somente `completed`, preservando valores.
 
@@ -99,7 +105,7 @@ A aba Histórico usa `FlatList`, refaz a consulta ao ganhar foco e mostra soment
 
 A rota interna `/history/[id]` é somente leitura. O detalhe consulta a sessão concluída, seleciona exercícios que possuam resultados e carrega somente séries concluídas em ordem de exercício/número. Carga `NULL` permanece sem peso inventado; carga zero e decimais são preservados. Data e horários usam o fuso do dispositivo, e a duração deriva exclusivamente de `started_at`/`finished_at`.
 
-O histórico não consulta `workouts`, `workout_exercises` ou o nome atual em `exercises`. Ele lê `workout_name`, `exercise_name`, ordem, carga e reps armazenados no snapshot da sessão. Assim, renomear, reordenar ou excluir o template/catálogo depois da conclusão não modifica o que foi executado. As três tabelas da migration 4 já continham todos esses dados; `user_version` permanece 4 e nenhuma migration ou dependência foi necessária.
+O histórico não consulta `workouts`, `workout_exercises` ou o nome atual em `exercises`. Ele lê `workout_name`, `exercise_name`, ordem, carga e reps armazenados no snapshot da sessão. Assim, renomear, reordenar ou excluir o template/catálogo depois da conclusão não modifica o que foi executado. A migration 5 apenas acrescenta ownership a essas tabelas; não altera nenhum snapshot.
 
 ## Streak e estatísticas básicas — fase 6
 
@@ -111,7 +117,7 @@ Cada semana distinta com ao menos uma conclusão vira uma chave pela data local 
 
 A evolução lista somente exercícios com `exercise_id` preservado e ao menos uma série concluída em sessão concluída. O agrupamento é por UUID, incluindo exercícios personalizados. Última carga/reps vêm da última série concluída da sessão mais recente; maior carga considera todo o histórico concluído do exercício; a lista mostra até 20 séries recentes, da mais nova para a mais antiga. Séries incompletas e sessões ativas são ignoradas. Snapshots continuam somente leitura, e não há sugestão de progressão.
 
-Não foi adicionada biblioteca de gráficos. Os valores são apresentados em cards, seletor horizontal e linhas cronológicas; gráficos, metas diárias e ranking ficam fora desta fase. O schema da migration 4 já é suficiente, então `user_version` permanece 4 e nenhuma tabela de streak/estatísticas foi criada.
+Não foi adicionada biblioteca de gráficos. Os valores são apresentados em cards, seletor horizontal e linhas cronológicas; gráficos, metas diárias e ranking ficam fora desta fase. Nenhuma tabela de streak/estatísticas existe: os repositories filtram sessões `completed` pelo usuário atual e os agregados continuam calculados do histórico.
 
 ### Calendário mensal e resumo geral
 
@@ -119,27 +125,21 @@ A tela `/stats` mantém em estado somente o primeiro dia local do mês exibido. 
 
 Streak atual, maior streak e evolução por exercício continuam consultando todo o histórico concluído, portanto não dependem do mês selecionado. A rota interna `/stats/summary` também não cria uma aba: ela agrega todas as sessões concluídas, conta somente `session_sets.completed = 1` e considera um exercício realizado quando sua ocorrência na sessão tem pelo menos uma série concluída. Exercícios excluídos continuam participando pelo nome do snapshot; quando há UUID, ele é a chave estável de agrupamento.
 
-O resumo geral calcula primeiro/último treino pelos timestamps de conclusão, dias distintos por data local e média de treinos pelo número de semanas locais inclusivas entre o primeiro e o último treino. Nenhum valor é materializado: todos os números são recalculados do SQLite. O schema permanece na migration 4 e não houve dependência adicional.
+O resumo geral calcula primeiro/último treino pelos timestamps de conclusão, dias distintos por data local e média de treinos pelo número de semanas locais inclusivas entre o primeiro e o último treino. Nenhum valor é materializado: todos os números são recalculados do SQLite. A migration 5 apenas acrescenta o filtro de proprietário; nenhuma tabela agregada foi criada.
 
-## Nuvem
+## Autenticação e sessão
 
-Supabase/PostgreSQL está previsto para contas, treinos, exercícios, histórico, estatísticas e sincronização entre dispositivos. Storage será considerado quando imagens forem necessárias. Não há schema de negócio ou recursos criados na nuvem nesta etapa. `database.types.ts` representa deliberadamente um schema vazio e deverá ser substituído pelos tipos gerados do projeto real na primeira migration remota.
+`AuthService` mantém a UI desacoplada e `SupabaseAuthService` usa somente `signUp`, `signInWithPassword`, `getSession`, `onAuthStateChange` e `signOut`. O identificador definitivo é `auth.users.id`; telefone é apenas atributo de login, nunca chave primária local.
 
-`getSupabaseClient()` retorna `null` sem ambiente ou lança erro de configuração inválida sem revelar valores. É lazy: a UI atual não chama esse método. A futura integração deve tratar erros, montar `observeSessionRefresh` uma vez e executar o cleanup ao desmontar.
+A UI recebe telefone e PIN numérico de exatamente quatro caracteres. O telefone é normalizado para E.164; o PIN permanece string, inclusive `"0042"`. A senha técnica é derivada deterministicamente como `acad-v1-` + SHA-256 de `academia-auth:v1:<telefone>:<pin>` usando `expo-crypto`. PIN e senha derivada existem apenas durante a chamada e nunca são gravados ou logados. A versão no domínio e no prefixo permite uma migração futura, mas a derivação não aumenta a entropia: continuam existindo apenas 10.000 PINs possíveis.
 
-A meta de R$ 0 implica permanecer nas cotas gratuitas do provedor, revisar seus limites antes de ativar recursos e não habilitar serviços pagos automaticamente. Nenhuma disponibilidade ilimitada ou custo futuro é presumido.
+O Dashboard precisa habilitar o provider Phone e desabilitar **Confirm phone**. Assim telefone + password cria uma sessão sem SMS/OTP. Nenhum e-mail fictício, MFA, Edge Function, backend próprio ou `service_role` é usado. O rate limit do endpoint de token do Supabase é a proteção disponível contra tentativas online; recuperação de PIN não existe nesta fase.
 
-## Autenticação: decisão pendente
+Tokens do Supabase usam `expo-secure-store`, com chunks menores que o limite histórico de algumas plataformas e metadado geracional para evitar substituir uma sessão válida antes de todos os chunks novos existirem. O cliente configura `persistSession`, `autoRefreshToken`, `processLock` e pausa/retoma a renovação conforme `AppState`. Na abertura, o provider restaura a sessão antes de montar `SQLiteProvider`; no logout, `signOut({ scope: 'local' })` remove a sessão local e desmonta as rotas privadas.
 
-Cada usuário terá UUID interno (`UserId`), enquanto telefone será um atributo. `AuthService` define restauração, entrada, saída e assinatura de estado, sem importar Supabase nas interfaces. Nenhum adapter real ou falso faz login nesta etapa.
+Configuração ausente ou inválida produz tela explicativa. Somente URL e chave pública `sb_publishable_...` entram no bundle. PostgreSQL continua sem tabelas de negócio e `database.types.ts` permanece vazio; portanto ainda não há RLS de treinos a implementar nesta fase.
 
-Telefone + PIN de quatro dígitos não deve ser tratado automaticamente como telefone + senha do Supabase Auth. Quatro dígitos têm apenas 10.000 combinações; validar um PIN exclusivamente no cliente não autoriza acesso aos dados remotos. Não usar telefone como e-mail fictício, senha compartilhada, chave primária ou segredo de acesso. Não enviar SMS/OTP nem criar funções remotas para contornar a decisão.
-
-Na fase específica, será necessário definir a identidade inicial, proteção contra tentativas, recuperação, troca de aparelho e como obter uma sessão autorizada respeitando as restrições de custo e ausência de backend próprio. Se a experiência planejada não for compatível com o mecanismo escolhido, documentar o conflito antes de implementar. Uma opção a avaliar será distinguir autenticação remota de desbloqueio local; **não há essa decisão nesta fundação**.
-
-A configuração de sessão está preparada com `persistSession`, renovação em primeiro plano e KV SQLite, mas persistência de um login real ainda não foi testada. KV SQLite não é armazenamento criptografado; a escolha de armazenamento protegido para tokens deve ser revisada na fase de autenticação. Nunca armazenar o PIN em texto puro. Conta atualmente informa corretamente que nenhum perfil está conectado.
-
-Antes de dados reais: policies RLS por `auth.uid()`, isolamento por usuário, ciclo de sessão/logout e limpeza/particionamento do cache local. A visualização familiar não implica compartilhamento automático de dados entre contas.
+A meta de R$ 0 usa Supabase Free e não configura SMS, Edge Functions ou serviço adicional. Limites do plano e inatividade do projeto continuam sendo responsabilidades operacionais antes de uso duradouro.
 
 ## Sincronização futura
 
@@ -149,4 +149,4 @@ Sem fila, worker, listeners realtime ou polling agora. Quando necessário, model
 
 Usar `npx expo install` para módulos nativos e conferir `expo-doctor` após mudanças. O Router 57 traz dependências transitivas de navegação e funcionalidades não usadas; não há adição direta de biblioteca de animações no código do app. Overrides fixam React DOM/Reanimated/Worklets às versões da matriz SDK 57 após o npm selecionar versões incompatíveis por peers abertos. Atualizar esses pins ao atualizar o SDK.
 
-ESLint 9 é compatível com o plugin React entregue pela configuração Expo 57, que usa uma API removida no ESLint 10. Revisar essa limitação junto às atualizações upstream. Avisos moderados da auditoria inicial estão documentados no README; não regredir versões do SDK para satisfazer sugestões automáticas.
+ESLint 9 é compatível com o plugin React entregue pela configuração Expo 57, que usa uma API removida no ESLint 10. Revisar essa limitação junto às atualizações upstream. Alertas transitivos da auditoria atual estão documentados no README; não regredir versões do SDK para satisfazer sugestões automáticas.

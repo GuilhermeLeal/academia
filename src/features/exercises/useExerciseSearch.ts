@@ -1,6 +1,7 @@
 import { useFocusEffect } from 'expo-router';
-import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
+
+import { useWorkoutDatabase } from '@/features/workouts/useWorkoutData';
 
 import { normalizeExerciseText } from './normalize';
 import { searchExercises } from './repository';
@@ -10,7 +11,7 @@ import type { Exercise } from './types';
 type SearchState = { query: string; revision: number; items: Exercise[]; status: 'loading' | 'ready' | 'error' };
 
 export function useExerciseSearch(query: string) {
-  const db = useSQLiteContext();
+  const db = useWorkoutDatabase();
   const normalized = normalizeExerciseText(query);
   const [revision, setRevision] = useState(0);
   const [state, setState] = useState<SearchState>({ query: '', revision: 0, items: [], status: 'loading' });

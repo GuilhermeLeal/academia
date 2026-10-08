@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 
 import type { WorkoutDatabase } from '../../src/features/workouts/repository.ts';
+import type { UserId } from '../../src/types/identity.ts';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import type { DatabaseSync, SQLInputValue } from 'node:sqlite';
 
@@ -14,9 +15,25 @@ function bindings(params: unknown[]): SQLInputValue[] {
   });
 }
 
-export function adapt(database: DatabaseSync): Pick<SQLiteDatabase, 'execAsync' | 'runAsync' | 'getFirstAsync' | 'getAllAsync' | 'withTransactionAsync'> & WorkoutDatabase {
+export const TEST_USER_ID = '00000000-0000-4000-8000-000000000001' as UserId;
+
+export function adapt(
+  database: DatabaseSync,
+  userId: UserId = TEST_USER_ID,
+): Pick<SQLiteDatabase, 'execAsync' | 'runAsync' | 'getFirstAsync' | 'getAllAsync' | 'withTransactionAsync'> & WorkoutDatabase {
+  const ensureLocalUser = () => {
+    const table = database.prepare(
+      "SELECT 1 AS found FROM sqlite_master WHERE type = 'table' AND name = 'local_users'",
+    ).get();
+    if (table) {
+      database.prepare(
+        'INSERT OR IGNORE INTO local_users (id, phone, authenticated_at) VALUES (?, ?, ?)',
+      ).run(userId, '+5511999999999', '2026-01-01T00:00:00.000Z');
+    }
+  };
   const adapter: ReturnType<typeof adapt> = {
-    async execAsync(sql) { database.exec(sql); },
+    userId,
+    async execAsync(sql) { database.exec(sql); ensureLocalUser(); },
     async runAsync(sql: string, ...params: unknown[]) {
       const result = database.prepare(sql).run(...bindings(params));
       return { changes: Number(result.changes), lastInsertRowId: Number(result.lastInsertRowid) };

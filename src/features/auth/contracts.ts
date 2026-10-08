@@ -6,7 +6,6 @@ export interface AppUser {
   phone: string | null;
 }
 
-/** Product requirement only. No Supabase phone/password mapping is assumed. */
 export interface PhonePinCredentials {
   phone: string;
   /** Four numeric digits; never persist, log or use directly as a cloud password. */
@@ -24,10 +23,10 @@ export type AuthState =
   | { status: 'signed-out' }
   | { status: 'signed-in'; session: AuthSession };
 
-/** Implement only after deciding how phone + PIN can be supported securely. */
 export interface AuthService {
   restoreSession(): Promise<AuthSession | null>;
   signIn(credentials: PhonePinCredentials): Promise<AuthSession>;
+  signUp(credentials: PhonePinCredentials): Promise<AuthSession>;
   signOut(): Promise<void>;
   subscribe(listener: (state: AuthState) => void): () => void;
 }

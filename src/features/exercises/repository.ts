@@ -2,9 +2,10 @@ import { normalizeExerciseText } from './normalize.ts';
 import { exerciseLimits } from './types.ts';
 
 import type { Exercise, ExerciseInput } from './types.ts';
+import type { UserScoped } from '@/db/userScopedDatabase';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-type ExerciseDatabase = Pick<SQLiteDatabase, 'getFirstAsync' | 'getAllAsync'>;
+type ExerciseDatabase = UserScoped<Pick<SQLiteDatabase, 'getFirstAsync' | 'getAllAsync'>>;
 type ExerciseRow = Omit<Exercise, 'isCustom'> & { isCustom: number };
 
 const columns = `id, name, normalized_name AS normalizedName, muscle_group AS muscleGroup,
@@ -43,16 +44,22 @@ export async function searchExercises(db: ExerciseDatabase, query: string): Prom
   ))`);
   const rows = await db.getAllAsync<ExerciseRow>(
     `SELECT ${columns} FROM exercises e
-     ${conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''}
+     WHERE ((e.is_custom = 0 AND e.user_id IS NULL) OR e.user_id = ?)
+       ${conditions.length ? `AND ${conditions.join(' AND ')}` : ''}
      ORDER BY CASE WHEN e.normalized_name = ? THEN 0
        WHEN instr(e.normalized_name, ?) = 1 THEN 1 ELSE 2 END, e.normalized_name, e.id`,
-    [...terms.flatMap((term) => [term, term]), normalized, normalized],
+    [db.userId, ...terms.flatMap((term) => [term, term]), normalized, normalized],
   );
   return rows.map(toExercise);
 }
 
 export async function getExercise(db: ExerciseDatabase, id: string): Promise<Exercise | null> {
-  const row = await db.getFirstAsync<ExerciseRow>(`SELECT ${columns} FROM exercises WHERE id = ?`, id);
+  const row = await db.getFirstAsync<ExerciseRow>(
+    `SELECT ${columns} FROM exercises
+     WHERE id = ? AND ((is_custom = 0 AND user_id IS NULL) OR user_id = ?)`,
+    id,
+    db.userId,
+  );
   return row ? toExercise(row) : null;
 }
 
@@ -61,9 +68,11 @@ export async function createCustomExercise(db: ExerciseDatabase, input: Exercise
   const now = new Date().toISOString();
   // SQLite generates an internal UUID; one atomic write, with no extra native dependency.
   const row = await db.getFirstAsync<ExerciseRow>(
-    `INSERT INTO exercises (name, normalized_name, muscle_group, equipment, is_custom, created_at, updated_at)
-     VALUES (?, ?, ?, ?, 1, ?, ?) RETURNING ${columns}`,
-    value.name, normalizeExerciseText(value.name), value.muscleGroup, value.equipment || null, now, now,
+    `INSERT INTO exercises
+     (name, normalized_name, muscle_group, equipment, is_custom, created_at, updated_at, user_id)
+     VALUES (?, ?, ?, ?, 1, ?, ?, ?) RETURNING ${columns}`,
+    value.name, normalizeExerciseText(value.name), value.muscleGroup, value.equipment || null,
+    now, now, db.userId,
   );
   if (!row) throw new Error('Não foi possível salvar o exercício.');
   return toExercise(row);
@@ -74,9 +83,9 @@ export async function updateCustomExercise(db: ExerciseDatabase, id: string, inp
   // The restriction belongs in the write itself, not just in the screen's disabled state.
   const row = await db.getFirstAsync<ExerciseRow>(
     `UPDATE exercises SET name = ?, normalized_name = ?, muscle_group = ?, equipment = ?, updated_at = ?
-     WHERE id = ? AND is_custom = 1 RETURNING ${columns}`,
+     WHERE id = ? AND is_custom = 1 AND user_id = ? RETURNING ${columns}`,
     value.name, normalizeExerciseText(value.name), value.muscleGroup, value.equipment || null,
-    new Date().toISOString(), id,
+    new Date().toISOString(), id, db.userId,
   );
   if (!row) throw new ExerciseValidationError('Este exercício não existe ou pertence ao catálogo padrão e não pode ser editado.');
   return toExercise(row);

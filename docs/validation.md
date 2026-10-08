@@ -1,4 +1,53 @@
-# Validação — fundação, treinos, histórico e estatísticas
+# Validação — app local-first com contas familiares
+
+## Fase 7 — autenticação e isolamento local
+
+- Supabase Auth usa telefone + senha técnica, sem SMS, OTP, e-mail, MFA, Edge Function ou `service_role`.
+- Telefone é normalizado para E.164; PIN é string de quatro dígitos e `"0042"` é preservado.
+- A credencial técnica é SHA-256 versionada, determinística e efêmera; PIN e senha derivada nunca são persistidos.
+- Sessão e refresh token usam `expo-secure-store`; `persistSession` e renovação por `AppState` abrem o app autenticado após reinício.
+- A migration incremental 5 mantém as versões 1–4 intactas, adiciona ownership, índices por usuário, triggers de integridade e uma sessão ativa por usuário.
+- Catálogo padrão usa `user_id = NULL`; exercícios personalizados, treinos, sessões, snapshots, séries, histórico e stats usam o UUID autenticado.
+- Dados legados continuam sem dono até consentimento. Vínculo é transacional/idempotente e **Agora não** mantém a ação disponível em Conta.
+- Supabase continua sem tabelas de treino: nenhuma sincronização ou RLS de dados de negócio foi adicionada.
+- Dependências novas: somente `expo-secure-store` e `expo-crypto`, instaladas na versão compatível com Expo SDK 57.
+- Testes automatizados cobrem autenticação, migration/vínculo e isolamento cruzado, além da suíte anterior.
+- `npm run typecheck` e `npm run lint`: aprovados sem erros ou warnings.
+- `npm test`: 61/61 testes aprovados.
+- `npm run doctor`: 21/21 verificações aprovadas após alinhar os patches oficiais do SDK 57.
+- `npm run export:android`: bundle Hermes de produção gerado em `dist/` (não é APK).
+- `git diff --check`: aprovado.
+- Teste visual/físico Android e autenticação contra um projeto Supabase real permanecem pendentes neste ambiente.
+
+### Configuração manual do Supabase
+
+1. Crie ou abra um projeto no plano Free.
+2. Em **Authentication → Providers → Phone**, habilite Phone.
+3. Desabilite **Confirm phone**. Não configure provedor SMS: o app usa phone + password e precisa receber a sessão no cadastro.
+4. Mantenha a política de senha compatível com a senha técnica de 72 caracteres.
+5. Copie a Project URL e a chave pública moderna para um `.env` não versionado:
+
+   ```dotenv
+   EXPO_PUBLIC_SUPABASE_URL=https://seu-projeto.supabase.co
+   EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_sua_chave_publica
+   ```
+
+6. Nunca use `service_role`, `sb_secret_...`, senha do banco ou PIN no app.
+
+### Fase 7 — roteiro Android
+
+1. Preserve os dados atuais para validar o upgrade. Encerre o Metro, configure `.env` e execute `npx expo start --clear`; abra no Expo Go SDK 57.
+2. Confira a tela dark **Entrar**. Em **Criar conta**, telefone deve abrir teclado telefônico; PIN e confirmação devem abrir teclado numérico, aceitar exatamente quatro caracteres e preservar zero inicial.
+3. Crie a conta A. Se havia dados antes da atualização, confirme que nada aparece silenciosamente: escolha **Agora não**, valide uma conta vazia e depois use **Conta → Vincular à minha conta**. Repita a instalação de QA e teste o vínculo direto. IDs, datas, histórico, cargas e reps devem permanecer.
+4. Na conta A, crie exercício personalizado, treino e uma sessão concluída. Confira Histórico, última carga, calendário, streak e resumo.
+5. Use **Conta → Sair**. A tela de login deve substituir imediatamente as rotas privadas. Crie a conta B: catálogo padrão aparece, mas nenhum personalizado, treino, sessão ou agregado de A pode aparecer.
+6. Inicie um treino em B. Isso pode coexistir no SQLite com uma sessão ativa de A, mas cada conta enxerga somente a própria. Finalize dados diferentes em B.
+7. Saia e entre novamente em A. Todos os dados de A reaparecem; dados de B continuam invisíveis. Repita alternando contas e abrindo IDs conhecidos pela navegação normal.
+8. Sem fazer logout, feche completamente o Expo Go/app e abra de novo. A sessão deve ser restaurada e a Home deve abrir sem pedir telefone/PIN. Depois faça logout, reinicie e confirme que permanece na tela Entrar.
+9. Corte a internet após o login e navegue nos dados já carregados: SQLite continua rápido e isolado. Login/cadastro/refresh remoto exigem conexão; não há sincronização offline nesta fase.
+10. Teste fonte ampliada, TalkBack, tela estreita, teclado aberto e Voltar do Android nas telas Entrar/Criar conta/Conta e no aviso legado.
+
+Limites intencionais: PIN de quatro dígitos tem baixa entropia e não possui recuperação nesta fase; trocar de aparelho recupera a conta autenticada, mas não os treinos até a sincronização futura. Não há RLS/schema remoto de treino, compartilhamento familiar, fila de sync, conflito, painel administrativo, SMS/OTP ou notificações.
 
 ## Melhoria da fase 6 — calendário mensal e resumo geral
 

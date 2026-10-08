@@ -222,9 +222,9 @@ async function insertSession(
   finishedAt: string | null,
 ) {
   await db.runAsync(
-    `INSERT INTO workout_sessions (id, workout_name, started_at, finished_at, status)
-     VALUES (?, 'Treino de teste', ?, ?, ?)`,
-    id, startedAt, finishedAt, status,
+    `INSERT INTO workout_sessions (id, workout_name, started_at, finished_at, status, user_id)
+     VALUES (?, 'Treino de teste', ?, ?, ?, ?)`,
+    id, startedAt, finishedAt, status, db.userId,
   );
 }
 
@@ -239,16 +239,16 @@ async function insertExerciseResult(
   await db.runAsync(
     `INSERT INTO session_exercises
      (id, session_id, exercise_id, exercise_name, position, planned_sets,
-      planned_reps_min, planned_reps_max, planned_rest_seconds)
-     VALUES (?, ?, ?, ?, 0, ?, 8, 12, 60)`,
-    id, sessionId, exerciseId, exerciseName, sets.length,
+      planned_reps_min, planned_reps_max, planned_rest_seconds, user_id)
+     VALUES (?, ?, ?, ?, 0, ?, 8, 12, 60, ?)`,
+    id, sessionId, exerciseId, exerciseName, sets.length, db.userId,
   );
   for (const [index, set] of sets.entries()) {
     await db.runAsync(
       `INSERT INTO session_sets
-       (id, session_exercise_id, set_number, weight, reps, completed)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      `${id}-set-${index + 1}`, id, index + 1, set.weight, set.reps, set.completed,
+       (id, session_exercise_id, set_number, weight, reps, completed, user_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `${id}-set-${index + 1}`, id, index + 1, set.weight, set.reps, set.completed, db.userId,
     );
   }
 }

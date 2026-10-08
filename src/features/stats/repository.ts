@@ -2,16 +2,17 @@ import type {
   CompletedExerciseOccurrence, CompletedSessionTime, EvolutionExercise,
   ExerciseEvolution, ExerciseEvolutionEntry,
 } from './types.ts';
+import type { UserScoped } from '@/db/userScopedDatabase';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-export type StatsDatabase = Pick<SQLiteDatabase, 'getFirstAsync' | 'getAllAsync'>;
+export type StatsDatabase = UserScoped<Pick<SQLiteDatabase, 'getFirstAsync' | 'getAllAsync'>>;
 
 export async function listCompletedSessionTimes(db: StatsDatabase): Promise<CompletedSessionTime[]> {
   return db.getAllAsync<CompletedSessionTime>(
     `SELECT id, started_at AS startedAt, finished_at AS finishedAt
      FROM workout_sessions
-     WHERE status = 'completed' AND finished_at IS NOT NULL
-     ORDER BY finished_at`,
+     WHERE user_id = ? AND status = 'completed' AND finished_at IS NOT NULL
+     ORDER BY finished_at`, db.userId,
   );
 }
 
@@ -23,8 +24,9 @@ export async function listCompletedSessionTimesInRange(
   return db.getAllAsync<CompletedSessionTime>(
     `SELECT id, started_at AS startedAt, finished_at AS finishedAt
      FROM workout_sessions
-     WHERE status = 'completed' AND finished_at >= ? AND finished_at < ?
+     WHERE user_id = ? AND status = 'completed' AND finished_at >= ? AND finished_at < ?
      ORDER BY finished_at`,
+    db.userId,
     start,
     end,
   );
@@ -36,7 +38,11 @@ export async function countCompletedSets(db: StatsDatabase): Promise<number> {
      FROM session_sets ss
      JOIN session_exercises se ON se.id = ss.session_exercise_id
      JOIN workout_sessions ws ON ws.id = se.session_id
-     WHERE ss.completed = 1 AND ws.status = 'completed'`,
+     WHERE ss.user_id = ? AND se.user_id = ? AND ws.user_id = ?
+       AND ss.completed = 1 AND ws.status = 'completed'`,
+    db.userId,
+    db.userId,
+    db.userId,
   );
   return row?.total ?? 0;
 }
@@ -52,11 +58,14 @@ export async function listCompletedExerciseOccurrences(
      se.exercise_name AS exerciseName
      FROM session_exercises se
      JOIN workout_sessions ws ON ws.id = se.session_id
-     WHERE ws.status = 'completed' AND EXISTS (
+     WHERE se.user_id = ? AND ws.user_id = ? AND ws.status = 'completed' AND EXISTS (
        SELECT 1 FROM session_sets ss
-       WHERE ss.session_exercise_id = se.id AND ss.completed = 1
+       WHERE ss.session_exercise_id = se.id AND ss.user_id = ? AND ss.completed = 1
      )
      ORDER BY ws.finished_at DESC, ws.started_at DESC, ws.id DESC, se.position`,
+    db.userId,
+    db.userId,
+    db.userId,
   );
 }
 
@@ -66,13 +75,17 @@ export async function listEvolutionExercises(db: StatsDatabase): Promise<Evoluti
        ws.finished_at AS finishedAt
      FROM session_exercises se
      JOIN workout_sessions ws ON ws.id = se.session_id
-     WHERE ws.status = 'completed' AND ws.finished_at IS NOT NULL
+     WHERE se.user_id = ? AND ws.user_id = ?
+       AND ws.status = 'completed' AND ws.finished_at IS NOT NULL
        AND se.exercise_id IS NOT NULL
        AND EXISTS (
          SELECT 1 FROM session_sets ss
-         WHERE ss.session_exercise_id = se.id AND ss.completed = 1
+         WHERE ss.session_exercise_id = se.id AND ss.user_id = ? AND ss.completed = 1
        )
      ORDER BY ws.finished_at DESC, ws.started_at DESC, ws.id DESC, se.position`,
+    db.userId,
+    db.userId,
+    db.userId,
   );
   const exercises = new Map<string, EvolutionExercise>();
   for (const { exerciseId, exerciseName } of rows) {
@@ -91,9 +104,13 @@ export async function getExerciseEvolution(
      FROM session_sets ss
      JOIN session_exercises se ON se.id = ss.session_exercise_id
      JOIN workout_sessions ws ON ws.id = se.session_id
-     WHERE se.exercise_id = ? AND ss.completed = 1
+     WHERE se.exercise_id = ? AND ss.user_id = ? AND se.user_id = ? AND ws.user_id = ?
+       AND ss.completed = 1
        AND ws.status = 'completed' AND ws.finished_at IS NOT NULL`,
     exerciseId,
+    db.userId,
+    db.userId,
+    db.userId,
   );
   const entries = await db.getAllAsync<ExerciseEvolutionEntry>(
     `SELECT ss.id AS setId, ws.id AS sessionId, se.exercise_name AS exerciseName,
@@ -101,11 +118,15 @@ export async function getExerciseEvolution(
      FROM session_sets ss
      JOIN session_exercises se ON se.id = ss.session_exercise_id
      JOIN workout_sessions ws ON ws.id = se.session_id
-     WHERE se.exercise_id = ? AND ss.completed = 1
+     WHERE se.exercise_id = ? AND ss.user_id = ? AND se.user_id = ? AND ws.user_id = ?
+       AND ss.completed = 1
        AND ws.status = 'completed' AND ws.finished_at IS NOT NULL
      ORDER BY ws.finished_at DESC, ws.started_at DESC, ws.id DESC, ss.set_number DESC, ss.id DESC
      LIMIT ?`,
     exerciseId,
+    db.userId,
+    db.userId,
+    db.userId,
     recentLimit,
   );
   const latest = entries[0];

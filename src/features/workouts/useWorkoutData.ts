@@ -3,6 +3,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useMemo, useState } from 'react';
 
 import { writeTransaction } from '@/db/writeTransaction';
+import { useAuthenticatedUser } from '@/features/auth/AuthProvider';
 
 import { getWorkout, listWorkouts } from './repository';
 
@@ -11,10 +12,21 @@ import type { Workout, WorkoutSummary } from './types';
 
 export function useWorkoutDatabase(): WorkoutDatabase {
   const db = useSQLiteContext();
+  const user = useAuthenticatedUser();
   return useMemo(() => ({
-    getFirstAsync: db.getFirstAsync.bind(db), getAllAsync: db.getAllAsync.bind(db), runAsync: db.runAsync.bind(db),
-    transaction: (task: Parameters<WorkoutDatabase['transaction']>[0]) => writeTransaction(db.databasePath, task),
-  }), [db]);
+    userId: user.id,
+    getFirstAsync: db.getFirstAsync.bind(db),
+    getAllAsync: db.getAllAsync.bind(db),
+    runAsync: db.runAsync.bind(db),
+    transaction: (task: Parameters<WorkoutDatabase['transaction']>[0]) => (
+      writeTransaction(db.databasePath, (tx) => task({
+        userId: user.id,
+        getFirstAsync: tx.getFirstAsync.bind(tx),
+        getAllAsync: tx.getAllAsync.bind(tx),
+        runAsync: tx.runAsync.bind(tx),
+      }))
+    ),
+  }), [db, user.id]);
 }
 
 // Shared focus refresh for the list/Home and detail. Editor loads only once to protect its draft.
