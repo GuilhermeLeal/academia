@@ -4,32 +4,30 @@ import { ActivityIndicator } from 'react-native';
 import { AppButton } from '@/components/AppButton';
 import { AppCard } from '@/components/AppCard';
 import { AppText } from '@/components/AppText';
-import { useActiveWorkoutSession } from '@/features/workout-session/useWorkoutSession';
+import { useHomeWorkout } from '@/features/home/useHomeWorkout';
 import { colors } from '@/theme/tokens';
 
-import { useWorkoutData } from './useWorkoutData';
-
 export function HomeWorkoutCard() {
-  const { items, status, retry } = useWorkoutData();
-  const active = useActiveWorkoutSession();
-  const workout = items[0];
+  const { selection, status, retry } = useHomeWorkout();
+  const activeSession = selection?.kind === 'active' ? selection.session : null;
+  const workout = selection?.kind === 'suggested' ? selection.workout : null;
   return (
     <AppCard>
       <AppText variant="eyebrow" tone="primary">SEU TREINO</AppText>
-      {status === 'loading' || active.status === 'loading' ? <ActivityIndicator color={colors.primary} /> : status === 'error' || active.status === 'error' ? <>
+      {status === 'loading' ? <ActivityIndicator color={colors.primary} /> : status === 'error' || !selection ? <>
         <AppText tone="secondary">Não foi possível consultar seus treinos.</AppText>
-        <AppButton title="Tentar novamente" variant="secondary" onPress={() => { retry(); active.retry(); }} />
-      </> : active.session ? <>
-        <AppText variant="title">{active.session.workoutName}</AppText>
+        <AppButton title="Tentar novamente" variant="secondary" onPress={retry} />
+      </> : activeSession ? <>
+        <AppText variant="title">{activeSession.workoutName}</AppText>
         <AppText variant="label" tone="primary">Treino em andamento</AppText>
-        <AppButton title="Continuar treino" onPress={() => router.push({ pathname: '/session/[id]', params: { id: active.session!.id } })} />
+        <AppButton title="Continuar treino" onPress={() => router.push({ pathname: '/session/[id]', params: { id: activeSession.id } })} />
         <AppText variant="caption" tone="secondary">Seus registros estão salvos neste dispositivo.</AppText>
       </> : workout ? <>
         <AppText variant="title">{workout.name}</AppText>
         {workout.description && <AppText tone="secondary" numberOfLines={3}>{workout.description}</AppText>}
         <AppText variant="label">{workout.exerciseCount} exercícios</AppText>
         <AppButton title="Ver treino" onPress={() => router.push({ pathname: '/workout/[id]', params: { id: workout.id } })} />
-        <AppText variant="caption" tone="secondary">Primeiro treino salvo.</AppText>
+        <AppText variant="caption" tone="secondary">Próximo treino da sua sequência.</AppText>
       </> : <>
         <AppText variant="heading">Monte sua rotina</AppText>
         <AppText tone="secondary">Escolha exercícios e organize um treino do seu jeito.</AppText>
