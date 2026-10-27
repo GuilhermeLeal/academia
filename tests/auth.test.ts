@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { test } from 'node:test';
 
-import { deriveTechnicalPassword, normalizePhone, validatePin } from '../src/features/auth/credentials.ts';
+import {
+  deriveTechnicalPassword, normalizePhone, phoneFromTechnicalEmail, technicalEmailFromPhone, validatePin,
+} from '../src/features/auth/credentials.ts';
 import { SupabaseAuthService } from '../src/features/auth/supabaseAuthService.ts';
 
 import type { PhonePinCredentials } from '../src/features/auth/contracts.ts';
@@ -29,29 +31,46 @@ test('keeps PIN 0042 as a four-character string and derives a deterministic vers
 
   assert.deepEqual(first, second);
   assert.equal(first.phone, '+5511999990042');
+  assert.equal(first.email, 'phone.5511999990042@auth.academia.invalid');
   assert.match(first.password, /^acad-v1-[0-9a-f]{64}$/);
   assert.notEqual(first.password, otherPin.password);
   assert(!first.password.includes('0042'));
 });
 
-test('restores an existing Supabase session and performs a local logout', async () => {
+test('maps each normalized phone to one deterministic internal email without losing digits', () => {
+  const first = technicalEmailFromPhone('(11) 99999-0042');
+  const same = technicalEmailFromPhone('+55 11 99999-0042');
+  const different = technicalEmailFromPhone('+55 11 99999-0043');
+
+  assert.equal(first, same);
+  assert.notEqual(first, different);
+  assert.equal(phoneFromTechnicalEmail(first), '+5511999990042');
+  assert.equal(phoneFromTechnicalEmail(different), '+5511999990043');
+  assert.equal(phoneFromTechnicalEmail('person@example.com'), null);
+});
+
+test('uses the internal email for sign up and login while restoring the phone-only app identity', async () => {
   const session = {
     expires_at: 1_900_000_000,
     user: {
       id: '11111111-1111-4111-8111-111111111111',
-      phone: '+5511999990042',
+      email: 'phone.5511999990042@auth.academia.invalid',
       user_metadata: {},
     },
   };
   let logoutScope: string | undefined;
-  let signedInPassword = '';
+  let signInInput: { email: string; password: string } | undefined;
+  let signUpInput: { email: string; password: string } | undefined;
   const auth = {
     async getSession() { return { data: { session }, error: null }; },
-    async signInWithPassword(input: { phone: string; password: string }) {
-      signedInPassword = input.password;
+    async signInWithPassword(input: { email: string; password: string }) {
+      signInInput = input;
       return { data: { session }, error: null };
     },
-    async signUp() { return { data: { session }, error: null }; },
+    async signUp(input: { email: string; password: string }) {
+      signUpInput = input;
+      return { data: { session }, error: null };
+    },
     async signOut(input: { scope: string }) {
       logoutScope = input.scope;
       return { error: null };
@@ -64,10 +83,15 @@ test('restores an existing Supabase session and performs a local logout', async 
 
   const restored = await service.restoreSession();
   assert.equal(restored?.user.id, session.user.id);
-  assert.equal(restored?.user.phone, session.user.phone);
-  await service.signIn({ phone: session.user.phone, pin: '0042' });
-  assert.match(signedInPassword, /^acad-v1-[0-9a-f]{64}$/);
-  assert(!signedInPassword.includes('0042'));
+  assert.equal(restored?.user.phone, '+5511999990042');
+  assert.equal('email' in (restored?.user ?? {}), false);
+  await service.signIn({ phone: '+5511999990042', pin: '0042' });
+  await service.signUp({ phone: '(11) 99999-0042', pin: '0042' });
+  assert.deepEqual(signInInput, signUpInput);
+  assert.equal(signInInput?.email, 'phone.5511999990042@auth.academia.invalid');
+  assert.equal('phone' in (signInInput ?? {}), false);
+  assert.match(signInInput?.password ?? '', /^acad-v1-[0-9a-f]{64}$/);
+  assert(!(signInInput?.password ?? '').includes('0042'));
   await service.signOut();
   assert.equal(logoutScope, 'local');
 });

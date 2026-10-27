@@ -2,6 +2,8 @@ import type { PhonePinCredentials } from './contracts.ts';
 
 export type Sha256Digest = (value: string) => Promise<string>;
 
+const technicalEmailDomain = 'auth.academia.invalid';
+
 export class CredentialsValidationError extends Error {}
 
 export function normalizePhone(value: string): string {
@@ -26,12 +28,22 @@ export function validatePin(pin: string): string {
   return pin;
 }
 
+export function technicalEmailFromPhone(value: string): string {
+  return `phone.${normalizePhone(value).slice(1)}@${technicalEmailDomain}`;
+}
+
+export function phoneFromTechnicalEmail(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const match = /^phone\.([1-9]\d{7,14})@auth\.academia\.invalid$/.exec(value);
+  return match?.[1] ? `+${match[1]}` : null;
+}
+
 export async function deriveTechnicalPassword(
   credentials: PhonePinCredentials,
   digest: Sha256Digest,
-): Promise<{ phone: string; password: string }> {
+): Promise<{ phone: string; email: string; password: string }> {
   const phone = normalizePhone(credentials.phone);
   const pin = validatePin(credentials.pin);
   const hash = await digest(`academia-auth:v1:${phone}:${pin}`);
-  return { phone, password: `acad-v1-${hash}` };
+  return { phone, email: technicalEmailFromPhone(phone), password: `acad-v1-${hash}` };
 }

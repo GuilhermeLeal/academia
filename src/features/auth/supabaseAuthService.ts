@@ -1,4 +1,4 @@
-import { deriveTechnicalPassword } from './credentials.ts';
+import { deriveTechnicalPassword, phoneFromTechnicalEmail } from './credentials.ts';
 
 import type { AuthService, AuthSession, AuthState, PhonePinCredentials } from './contracts.ts';
 import type { Sha256Digest } from './credentials.ts';
@@ -13,7 +13,7 @@ function toAppSession(session: Session): AuthSession {
     user: {
       id: session.user.id as UserId,
       displayName: displayName(session.user),
-      phone: session.user.phone ?? null,
+      phone: session.user.phone ?? phoneFromTechnicalEmail(session.user.email),
     },
     expiresAt: session.expires_at ?? null,
   };
@@ -40,19 +40,19 @@ export class SupabaseAuthService implements AuthService {
   }
 
   async signIn(credentials: PhonePinCredentials): Promise<AuthSession> {
-    const { phone, password } = await deriveTechnicalPassword(credentials, this.digest);
-    const { data, error } = await this.client.auth.signInWithPassword({ phone, password });
+    const { email, password } = await deriveTechnicalPassword(credentials, this.digest);
+    const { data, error } = await this.client.auth.signInWithPassword({ email, password });
     if (error) throw error;
-    if (!data.session) throw new Error('O Supabase não iniciou a sessão. Revise a configuração de autenticação por telefone.');
+    if (!data.session) throw new Error('O Supabase não iniciou a sessão. Revise a configuração de autenticação por email e senha.');
     return toAppSession(data.session);
   }
 
   async signUp(credentials: PhonePinCredentials): Promise<AuthSession> {
-    const { phone, password } = await deriveTechnicalPassword(credentials, this.digest);
-    const { data, error } = await this.client.auth.signUp({ phone, password });
+    const { email, password } = await deriveTechnicalPassword(credentials, this.digest);
+    const { data, error } = await this.client.auth.signUp({ email, password });
     if (error) throw error;
     if (!data.session) {
-      throw new Error('O cadastro aguarda confirmação. Desative a confirmação por SMS no projeto Supabase.');
+      throw new Error('O cadastro aguarda confirmação. Desative a confirmação de email no projeto Supabase.');
     }
     return toAppSession(data.session);
   }
