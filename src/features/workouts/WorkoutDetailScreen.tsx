@@ -1,5 +1,4 @@
-import { router, useLocalSearchParams } from 'expo-router';
-import { usePreventRemove } from 'expo-router/react-navigation';
+import { router, useLocalSearchParams, usePreventRemove } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator } from 'react-native';
 

@@ -15,7 +15,7 @@ import { exerciseLimits } from './types';
 import { useExerciseSearch } from './useExerciseSearch';
 
 import type { Exercise } from './types';
-import type { ListRenderItemInfo } from 'react-native';
+import type { ListRenderItemInfo, TextInputInstance } from 'react-native';
 
 const keyExtractor = (exercise: Exercise) => exercise.id;
 const openExercise = (exercise: Exercise) => router.push({ pathname: '/exercises/[id]', params: { id: exercise.id } });
@@ -33,7 +33,7 @@ export function LibraryContent({ initialQuery = '', selection }: { initialQuery?
   const [query, setQuery] = useState(initialQuery);
   const [focused, setFocused] = useState(false);
   const list = useRef<FlatList<Exercise>>(null);
-  const input = useRef<TextInput>(null);
+  const input = useRef<TextInputInstance>(null);
   const { items, status, retry } = useExerciseSearch(query);
 
   useEffect(() => { list.current?.scrollToOffset({ offset: 0, animated: false }); }, [query]);

@@ -15,6 +15,7 @@ import { createCustomExercise, ExerciseValidationError, getExercise, updateCusto
 import { exerciseLimits } from './types';
 
 import type { Exercise, ExerciseInput } from './types';
+import type { TextInputInstance } from 'react-native';
 
 const emptyInput: ExerciseInput = { name: '', muscleGroup: '', equipment: '' };
 
@@ -33,8 +34,8 @@ function ExerciseEditorForm({ id }: { id?: string }) {
   const [error, setError] = useState<string | null>(null);
   const savingRef = useRef(false);
   const mounted = useRef(true);
-  const groupInput = useRef<TextInput>(null);
-  const equipmentInput = useRef<TextInput>(null);
+  const groupInput = useRef<TextInputInstance>(null);
+  const equipmentInput = useRef<TextInputInstance>(null);
 
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   useEffect(() => {

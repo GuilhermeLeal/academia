@@ -1,5 +1,4 @@
-import { router, useLocalSearchParams, useNavigation } from 'expo-router';
-import { usePreventRemove } from 'expo-router/react-navigation';
+import { router, useLocalSearchParams, usePreventRemove } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -23,7 +22,6 @@ import { WorkoutExerciseFields } from './WorkoutExerciseFields';
 import { WorkoutHeader } from './WorkoutHeader';
 
 import type { DraftExercise } from './draft';
-import type { NavigationAction } from 'expo-router/react-navigation';
 
 export function WorkoutEditorScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -32,7 +30,6 @@ export function WorkoutEditorScreen() {
 
 function WorkoutEditor({ id }: { id?: string }) {
   const db = useWorkoutDatabase();
-  const navigation = useNavigation();
   const reducedMotion = useReducedMotion();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -44,7 +41,7 @@ function WorkoutEditor({ id }: { id?: string }) {
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [pendingAction, setPendingAction] = useState<NavigationAction | null>(null);
+  const [repeatPendingRemoval, setRepeatPendingRemoval] = useState<(() => void) | null>(null);
   const savingRef = useRef(false);
   const mounted = useRef(true);
 
@@ -61,7 +58,9 @@ function WorkoutEditor({ id }: { id?: string }) {
     return () => { active = false; };
   }, [db, id, revision]);
 
-  usePreventRemove(!savedId && (dirty || saving), ({ data }) => { if (!saving) setPendingAction(data.action); });
+  usePreventRemove(!savedId && (dirty || saving), ({ repeat }) => {
+    if (!saving) setRepeatPendingRemoval(() => repeat);
+  });
   useEffect(() => {
     if (savedId) router.dismissTo({ pathname: '/workout/[id]', params: { id: savedId } });
   }, [savedId]);
@@ -80,14 +79,14 @@ function WorkoutEditor({ id }: { id?: string }) {
     } finally { savingRef.current = false; if (mounted.current) setSaving(false); }
   }
 
-  if (pendingAction) return (
+  if (repeatPendingRemoval) return (
     <AppScreen bottomInset>
       <AnimatedReveal>
         <AppCard>
           <AppText variant="heading">Descartar alterações?</AppText>
           <AppText tone="secondary">As alterações deste formulário ainda não foram salvas.</AppText>
-          <AppButton title="Continuar editando" onPress={() => setPendingAction(null)} />
-          <AppButton title="Descartar e voltar" variant="secondary" onPress={() => navigation.dispatch(pendingAction)} />
+          <AppButton title="Continuar editando" onPress={() => setRepeatPendingRemoval(null)} />
+          <AppButton title="Descartar e voltar" variant="secondary" onPress={() => { setDirty(false); repeatPendingRemoval(); }} />
         </AppCard>
       </AnimatedReveal>
     </AppScreen>

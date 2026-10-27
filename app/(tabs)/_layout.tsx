@@ -19,10 +19,10 @@ export default function TabsLayout() {
       },
       sceneStyle: { backgroundColor: colors.background },
     }}>
-      <Tabs.Screen name="index" options={{ title: 'Início', tabBarIcon: ({ color, size, focused }) => <Ionicons name={focused ? 'home' : 'home-outline'} size={size} color={color} /> }} />
-      <Tabs.Screen name="workouts" options={{ title: 'Treinos', tabBarIcon: ({ color, size, focused }) => <Ionicons name={focused ? 'barbell' : 'barbell-outline'} size={size} color={color} /> }} />
-      <Tabs.Screen name="history" options={{ title: 'Histórico', tabBarIcon: ({ color, size, focused }) => <Ionicons name={focused ? 'time' : 'time-outline'} size={size} color={color} /> }} />
-      <Tabs.Screen name="account" options={{ title: 'Conta', tabBarIcon: ({ color, size, focused }) => <Ionicons name={focused ? 'person-circle' : 'person-circle-outline'} size={size} color={color} /> }} />
+      <Tabs.Screen name="index" options={{ title: 'Início', tabBarIcon: ({ color, size, focused }) => <Ionicons name={focused ? 'home' : 'home-outline'} size={size} color={typeof color === 'string' ? color : colors.textSecondary} /> }} />
+      <Tabs.Screen name="workouts" options={{ title: 'Treinos', tabBarIcon: ({ color, size, focused }) => <Ionicons name={focused ? 'barbell' : 'barbell-outline'} size={size} color={typeof color === 'string' ? color : colors.textSecondary} /> }} />
+      <Tabs.Screen name="history" options={{ title: 'Histórico', tabBarIcon: ({ color, size, focused }) => <Ionicons name={focused ? 'time' : 'time-outline'} size={size} color={typeof color === 'string' ? color : colors.textSecondary} /> }} />
+      <Tabs.Screen name="account" options={{ title: 'Conta', tabBarIcon: ({ color, size, focused }) => <Ionicons name={focused ? 'person-circle' : 'person-circle-outline'} size={size} color={typeof color === 'string' ? color : colors.textSecondary} /> }} />
     </Tabs>
   );
 }

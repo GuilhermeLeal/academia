@@ -32,7 +32,7 @@ export function getSupabaseClient(): SupabaseClient<Database> | null {
 
 // The future auth provider should call this once and return its cleanup in an effect.
 export function observeSessionRefresh(supabase: SupabaseClient<Database>): () => void {
-  const update = (state: string) => {
+  const update = (state: string | null | undefined) => {
     if (state === 'active') supabase.auth.startAutoRefresh();
     else supabase.auth.stopAutoRefresh();
   };
