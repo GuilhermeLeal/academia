@@ -2,7 +2,7 @@
 
 Aplicativo mobile para treinos pessoais e familiares. A prioridade é abrir, encontrar o treino e continuar com poucos toques, mantendo uma interface escura, leve e previsível.
 
-**Estado: fase 7 — contas familiares e isolamento local.** O app autentica com telefone + PIN de quatro dígitos usando Supabase Auth, restaura a sessão com armazenamento seguro e mantém exercícios personalizados, treinos, sessões, histórico e estatísticas separados por UUID de usuário no SQLite. O catálogo padrão continua compartilhado. Ainda não existe sincronização dos dados de treino com PostgreSQL.
+**Estado: Cloud Foundation preparada; app local-first.** O app autentica com telefone + PIN de quatro dígitos usando Supabase Auth, restaura a sessão com armazenamento seguro e mantém exercícios personalizados, treinos, sessões, histórico e estatísticas separados por UUID de usuário no SQLite. Migrations PostgreSQL, RLS e tipos remotos estão versionados; sua aplicação no projeto real está pendente. Ainda não existe sincronização dos dados de treino. Veja [schema, aplicação e testes de RLS](docs/cloud-foundation.md).
 
 ## Stack
 
@@ -78,7 +78,7 @@ A configuração aceita uma URL HTTPS de projeto e a chave pública moderna `sb_
 
 Variáveis `EXPO_PUBLIC_*` entram no aplicativo e **não são secrets**. Nunca coloque `service_role`, `sb_secret_...`, senha PostgreSQL ou PIN no código/ambiente público. `.env`, credenciais, bancos locais e dependências estão no `.gitignore`; apenas `.env.example` é versionável.
 
-No Dashboard do Supabase, em **Authentication → Providers → Phone**, habilite autenticação por telefone e desabilite **Confirm phone**. Sem essa confirmação, `signUp({ phone, password })` retorna uma sessão diretamente e nenhum provedor SMS é necessário. Não habilite OTP, MFA ou CAPTCHA nesta fase. A política de senha precisa aceitar a senha técnica SHA-256 de 72 caracteres. O app usa apenas a chave pública e nunca `service_role`.
+O fluxo atual usa **Email provider** com **Confirm email desabilitado**. A UI continua telefone + PIN; internamente o telefone normalizado determina um email técnico e o app envia `signUp({ email, password })`/`signInWithPassword({ email, password })`. Não usa Phone Provider, SMS, OTP ou magic link. A Cloud Foundation mantém essa configuração. O app usa apenas a chave pública e nunca `service_role`.
 
 ## Estrutura
 
@@ -162,7 +162,7 @@ O polimento visual usa microinterações curtas para pressão, conclusão, confi
 
 ## Próximas etapas
 
-Implementar sincronização SQLite ↔ PostgreSQL, schema remoto e RLS em uma fase própria; nenhum dado de treino é enviado ao Supabase agora. Timer de descanso, notificações, comportamento avançado em background, distribuição, filtros, imagens oficiais e exclusão de exercícios também ficam para depois. Gráficos, metas diárias e progressão automática não foram implementados.
+Aplicar e validar a [Cloud Foundation](docs/cloud-foundation.md) no projeto real; depois implementar o Sync Engine SQLite ↔ PostgreSQL. Nenhum dado de treino é enviado automaticamente ao Supabase agora. Timer de descanso, notificações, comportamento avançado em background, distribuição, filtros, imagens oficiais e exclusão de exercícios também ficam para depois. Gráficos, metas diárias e progressão automática não foram implementados.
 
 ## Referências
 

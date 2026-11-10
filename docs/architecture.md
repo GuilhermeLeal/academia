@@ -2,7 +2,7 @@
 
 ## Limites desta etapa
 
-O projeto é exclusivamente mobile e local-first. Biblioteca, templates, execução, histórico e estatísticas continuam no SQLite; Supabase é usado nesta fase somente para autenticação. Cada conta recebe `auth.users.id` como UUID definitivo e todos os dados privados locais são particionados por ele. Não há sincronização, schema remoto de treino, RLS dessas tabelas, calendário externo ou infraestrutura própria.
+O projeto é exclusivamente mobile e local-first. Biblioteca, templates, execução, histórico e estatísticas continuam no SQLite; as telas usam Supabase somente para autenticação. Cada conta recebe `auth.users.id` como UUID definitivo e todos os dados privados locais são particionados por ele. A [Cloud Foundation](cloud-foundation.md) acrescenta migrations PostgreSQL, RLS, tipos e acesso remoto explícito ainda desconectado das telas. A aplicação no projeto real está pendente e não há sincronização automática.
 
 ## UI e navegação
 
@@ -133,11 +133,11 @@ O resumo geral calcula primeiro/último treino pelos timestamps de conclusão, d
 
 A UI recebe telefone e PIN numérico de exatamente quatro caracteres. O telefone é normalizado para E.164; o PIN permanece string, inclusive `"0042"`. A senha técnica é derivada deterministicamente como `acad-v1-` + SHA-256 de `academia-auth:v1:<telefone>:<pin>` usando `expo-crypto`. PIN e senha derivada existem apenas durante a chamada e nunca são gravados ou logados. A versão no domínio e no prefixo permite uma migração futura, mas a derivação não aumenta a entropia: continuam existindo apenas 10.000 PINs possíveis.
 
-O Dashboard precisa habilitar o provider Phone e desabilitar **Confirm phone**. Assim telefone + password cria uma sessão sem SMS/OTP. Nenhum e-mail fictício, MFA, Edge Function, backend próprio ou `service_role` é usado. O rate limit do endpoint de token do Supabase é a proteção disponível contra tentativas online; recuperação de PIN não existe nesta fase.
+O fluxo atual usa Email provider com **Confirm email desabilitado**. O telefone E.164 determina `phone.<dígitos>@auth.academia.invalid`; cadastro/login enviam esse email técnico e a senha derivada. A UI continua telefone + PIN e não usa SMS/OTP. A Cloud Foundation não altera esse fluxo. O rate limit do endpoint de token do Supabase é a proteção disponível contra tentativas online; recuperação de PIN não existe nesta fase.
 
 Tokens do Supabase usam `expo-secure-store`, com chunks menores que o limite histórico de algumas plataformas e metadado geracional para evitar substituir uma sessão válida antes de todos os chunks novos existirem. O cliente configura `persistSession`, `autoRefreshToken`, `processLock` e pausa/retoma a renovação conforme `AppState`. Na abertura, o provider restaura a sessão antes de montar `SQLiteProvider`; no logout, `signOut({ scope: 'local' })` remove a sessão local e desmonta as rotas privadas.
 
-Configuração ausente ou inválida produz tela explicativa. Somente URL e chave pública `sb_publishable_...` entram no bundle. PostgreSQL continua sem tabelas de negócio e `database.types.ts` permanece vazio; portanto ainda não há RLS de treinos a implementar nesta fase.
+Configuração ausente ou inválida produz tela explicativa. Somente URL e chave pública `sb_publishable_...` entram no bundle. `database.types.ts` agora reflete as seis tabelas da Cloud Foundation; migrations, RLS e estratégia de catálogo/tombstones estão descritas em [cloud-foundation.md](cloud-foundation.md). Nenhum repository local depende desse schema remoto.
 
 A meta de R$ 0 usa Supabase Free e não configura SMS, Edge Functions ou serviço adicional. Limites do plano e inatividade do projeto continuam sendo responsabilidades operacionais antes de uso duradouro.
 

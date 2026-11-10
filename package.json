@@ -27,6 +27,7 @@
     "react-native-url-polyfill": "4.0.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.16",
     "@types/node": "22.20.4",
     "@types/react": "~19.3.0",
     "eslint": "9.39.5",
