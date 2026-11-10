@@ -10,6 +10,7 @@ import { AuthProvider, useAuth } from '@/features/auth/AuthProvider';
 import { AuthScreen } from '@/features/auth/AuthScreen';
 import { LegacyDataGate } from '@/features/auth/LegacyDataGate';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import '@/services/initial-sync/development';
 import { colors, spacing } from '@/theme/tokens';
 
 import type { ErrorBoundaryProps } from 'expo-router';

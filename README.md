@@ -2,7 +2,7 @@
 
 Aplicativo mobile para treinos pessoais e familiares. A prioridade é abrir, encontrar o treino e continuar com poucos toques, mantendo uma interface escura, leve e previsível.
 
-**Estado: Cloud Foundation preparada; app local-first.** O app autentica com telefone + PIN de quatro dígitos usando Supabase Auth, restaura a sessão com armazenamento seguro e mantém exercícios personalizados, treinos, sessões, histórico e estatísticas separados por UUID de usuário no SQLite. Migrations PostgreSQL, RLS e tipos remotos estão versionados; sua aplicação no projeto real está pendente. Ainda não existe sincronização dos dados de treino. Veja [schema, aplicação e testes de RLS](docs/cloud-foundation.md).
+**Estado: Initial Sync controlado; app local-first.** A Cloud Foundation já foi aplicada e validada no Supabase real pelo responsável. Upload inicial e restauração de uma conta vazia estão disponíveis por funções internas de desenvolvimento, com recibo de integridade e conflitos explícitos. Nada sincroniza automaticamente durante o treino. Veja [o procedimento de troca de aparelho](docs/initial-sync.md) e [o schema/RLS](docs/cloud-foundation.md).
 
 ## Stack
 
@@ -162,7 +162,7 @@ O polimento visual usa microinterações curtas para pressão, conclusão, confi
 
 ## Próximas etapas
 
-Aplicar e validar a [Cloud Foundation](docs/cloud-foundation.md) no projeto real; depois implementar o Sync Engine SQLite ↔ PostgreSQL. Nenhum dado de treino é enviado automaticamente ao Supabase agora. Timer de descanso, notificações, comportamento avançado em background, distribuição, filtros, imagens oficiais e exclusão de exercícios também ficam para depois. Gráficos, metas diárias e progressão automática não foram implementados.
+Validar a troca de aparelho pelo [Initial Sync controlado](docs/initial-sync.md); depois implementar o Sync Engine SQLite ↔ PostgreSQL, com captura de alterações, retomada e conflitos. Nenhum dado de treino é enviado automaticamente ao Supabase agora. Timer de descanso, notificações, comportamento avançado em background, distribuição, filtros, imagens oficiais e exclusão de exercícios também ficam para depois. Gráficos, metas diárias e progressão automática não foram implementados.
 
 ## Referências
 

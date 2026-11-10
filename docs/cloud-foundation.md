@@ -1,5 +1,7 @@
 # Cloud Foundation — contrato remoto
 
+Atualização da fase seguinte: a aplicação/validação no Supabase real foi confirmada pelo responsável. O relato abaixo registra a entrega original da Foundation. O [Initial Sync controlado](initial-sync.md) implementa agora upload e restauração explícitos sobre este mesmo schema, sem sincronização automática.
+
 Estado desta entrega: migrations versionadas e validadas em PostgreSQL/PGlite; aplicação no Supabase real pendente. O workspace não tinha Supabase CLI instalado/vinculado, Docker ou `psql`. Não foram usadas credenciais administrativas nem acessado o banco real. O arquivo `supabase/config.toml` adicionado descreve somente o ambiente local; não altera a configuração de Auth do projeto hospedado.
 
 O app continua usando SQLite v5 para todo o domínio. Nenhuma tela, repository local, migration SQLite, regra de treino, rotação da Home ou fluxo Auth foi conectado ao PostgreSQL. Aplicar estas migrations **não transfere os dados do aparelho** nem transforma esta etapa em backup.

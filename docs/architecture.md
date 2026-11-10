@@ -1,5 +1,7 @@
 # Arquitetura — app local-first com contas familiares
 
+A fase [Initial Sync controlado](initial-sync.md) acrescenta transferência manual de uma conta e restauração transacional em SQLite vazio. Usa a Cloud Foundation já aplicada, sem modificar migrations locais/remotas ou conectar sync à execução dos treinos. O gatilho fica exclusivamente no console de desenvolvimento.
+
 ## Limites desta etapa
 
 O projeto é exclusivamente mobile e local-first. Biblioteca, templates, execução, histórico e estatísticas continuam no SQLite; as telas usam Supabase somente para autenticação. Cada conta recebe `auth.users.id` como UUID definitivo e todos os dados privados locais são particionados por ele. A [Cloud Foundation](cloud-foundation.md) acrescenta migrations PostgreSQL, RLS, tipos e acesso remoto explícito ainda desconectado das telas. A aplicação no projeto real está pendente e não há sincronização automática.
