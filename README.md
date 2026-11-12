@@ -2,7 +2,7 @@
 
 Aplicativo mobile para treinos pessoais e familiares. A prioridade é abrir, encontrar o treino e continuar com poucos toques, mantendo uma interface escura, leve e previsível.
 
-**Estado: Initial Sync controlado; app local-first.** A Cloud Foundation já foi aplicada e validada no Supabase real pelo responsável. Upload inicial e restauração de uma conta vazia estão disponíveis por funções internas de desenvolvimento, com recibo de integridade e conflitos explícitos. Nada sincroniza automaticamente durante o treino. Veja [o procedimento de troca de aparelho](docs/initial-sync.md) e [o schema/RLS](docs/cloud-foundation.md).
+**Estado: Sync Engine incremental; app local-first.** A Cloud Foundation e o Initial Sync foram validados no Supabase real. Alterações posteriores usam outbox SQLite durável, push/pull incremental, tombstones, retries idempotentes e conflitos determinísticos sem bloquear o treino. Veja [o protocolo incremental](docs/incremental-sync.md), [o procedimento de Initial Sync](docs/initial-sync.md) e [o schema/RLS](docs/cloud-foundation.md).
 
 ## Stack
 

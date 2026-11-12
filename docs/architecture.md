@@ -1,6 +1,6 @@
 # Arquitetura — app local-first com contas familiares
 
-A fase [Initial Sync controlado](initial-sync.md) acrescenta transferência manual de uma conta e restauração transacional em SQLite vazio. Usa a Cloud Foundation já aplicada, sem modificar migrations locais/remotas ou conectar sync à execução dos treinos. O gatilho fica exclusivamente no console de desenvolvimento.
+A fase [Sync Engine incremental](incremental-sync.md) acrescenta outbox transacional por usuário, push/pull incremental, retries, checkpoints sobrepostos e resolução determinística de conflitos. O SQLite continua sendo a fonte imediata e a rede nunca bloqueia a execução do treino. Ela reutiliza a Cloud Foundation e o [Initial Sync controlado](initial-sync.md), sem migration remota adicional.
 
 ## Limites desta etapa
 

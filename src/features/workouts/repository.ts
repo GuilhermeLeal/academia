@@ -1,5 +1,6 @@
 import { validateWorkout, WorkoutValidationError } from './model.ts';
 import { workoutLimits } from './types.ts';
+import { signalSyncNeeded } from '../../services/incremental-sync/events.ts';
 
 import type { Workout, WorkoutExercise, WorkoutInput, WorkoutSummary } from './types.ts';
 import type { UserScoped } from '@/db/userScopedDatabase';
@@ -82,6 +83,7 @@ export async function createWorkout(db: WorkoutDatabase, input: WorkoutInput): P
   const value = validateWorkout(input);
   let id = '';
   await db.transaction(async (tx) => { id = await insertWorkout(tx, value); });
+  signalSyncNeeded();
   return id;
 }
 
@@ -100,12 +102,14 @@ export async function updateWorkout(db: WorkoutDatabase, id: string, input: Work
     if (!result.changes) throw new WorkoutValidationError('Este treino não existe mais. Volte à lista de treinos.');
     await writeExercises(tx, id, value, now);
   });
+  signalSyncNeeded();
 }
 
 export async function deleteWorkout(db: WorkoutDatabase, id: string): Promise<void> {
   await db.transaction(async (tx) => {
     await tx.runAsync('DELETE FROM workouts WHERE id = ? AND user_id = ?', id, tx.userId);
   });
+  signalSyncNeeded();
 }
 
 export async function duplicateWorkout(db: WorkoutDatabase, id: string): Promise<string> {
@@ -118,5 +122,6 @@ export async function duplicateWorkout(db: WorkoutDatabase, id: string): Promise
       description: source.description ?? '', exercises: source.exercises });
     copyId = await insertWorkout(tx, copy);
   });
+  signalSyncNeeded();
   return copyId;
 }

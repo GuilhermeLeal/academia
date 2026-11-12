@@ -57,6 +57,7 @@ export async function standardExerciseIds(db: WorkoutTransaction): Promise<Set<s
 /** Caller must hold the local transaction and have checked per-user emptiness. */
 export async function insertLocalSnapshot(db: WorkoutTransaction, snapshot: SyncSnapshot): Promise<void> {
   await db.runAsync('INSERT INTO local_users (id, authenticated_at) VALUES (?, ?) ON CONFLICT(id) DO NOTHING', db.userId, new Date().toISOString());
+  await db.runAsync('INSERT OR IGNORE INTO sync_suppression(user_id) VALUES (?)', db.userId);
   for (const table of syncTables) {
     const names: readonly string[] = columns[table];
     for (const row of snapshot[table]) {
@@ -71,4 +72,5 @@ export async function insertLocalSnapshot(db: WorkoutTransaction, snapshot: Sync
       await db.runAsync(`INSERT INTO ${table} (${names.join(', ')}) VALUES (${names.map(() => '?').join(', ')})`, values);
     }
   }
+  await db.runAsync('DELETE FROM sync_suppression WHERE user_id = ?', db.userId);
 }

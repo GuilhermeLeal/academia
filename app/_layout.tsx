@@ -11,6 +11,7 @@ import { AuthScreen } from '@/features/auth/AuthScreen';
 import { LegacyDataGate } from '@/features/auth/LegacyDataGate';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import '@/services/initial-sync/development';
+import { IncrementalSyncProvider } from '@/services/incremental-sync/IncrementalSyncProvider';
 import { colors, spacing } from '@/theme/tokens';
 
 import type { ErrorBoundaryProps } from 'expo-router';
@@ -65,29 +66,31 @@ function AuthenticatedRoutes({ reducedMotion }: { reducedMotion: boolean }) {
   return (
     <LocalDatabaseProvider>
       <LegacyDataGate>
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: colors.background },
-            animation: reducedMotion ? 'none' : 'fade',
-            animationDuration: 180,
-          }}
-        >
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="workout-preview" />
-          <Stack.Screen name="exercises/index" />
-          <Stack.Screen name="exercises/new" />
-          <Stack.Screen name="exercises/[id]" />
-          <Stack.Screen name="workout/new" />
-          <Stack.Screen name="workout/[id]/index" />
-          <Stack.Screen name="workout/[id]/edit" />
-          <Stack.Screen name="session/[id]" />
-          <Stack.Screen name="session/[id]/exercise/[exerciseId]" />
-          <Stack.Screen name="session/[id]/summary" />
-          <Stack.Screen name="history/[id]" />
-          <Stack.Screen name="stats" />
-          <Stack.Screen name="stats/summary" />
-        </Stack>
+        <IncrementalSyncProvider>
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: colors.background },
+              animation: reducedMotion ? 'none' : 'fade',
+              animationDuration: 180,
+            }}
+          >
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="workout-preview" />
+            <Stack.Screen name="exercises/index" />
+            <Stack.Screen name="exercises/new" />
+            <Stack.Screen name="exercises/[id]" />
+            <Stack.Screen name="workout/new" />
+            <Stack.Screen name="workout/[id]/index" />
+            <Stack.Screen name="workout/[id]/edit" />
+            <Stack.Screen name="session/[id]" />
+            <Stack.Screen name="session/[id]/exercise/[exerciseId]" />
+            <Stack.Screen name="session/[id]/summary" />
+            <Stack.Screen name="history/[id]" />
+            <Stack.Screen name="stats" />
+            <Stack.Screen name="stats/summary" />
+          </Stack>
+        </IncrementalSyncProvider>
       </LegacyDataGate>
     </LocalDatabaseProvider>
   );

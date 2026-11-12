@@ -1,5 +1,6 @@
 import { normalizeExerciseText } from './normalize.ts';
 import { exerciseLimits } from './types.ts';
+import { signalSyncNeeded } from '../../services/incremental-sync/events.ts';
 
 import type { Exercise, ExerciseInput } from './types.ts';
 import type { UserScoped } from '@/db/userScopedDatabase';
@@ -75,6 +76,7 @@ export async function createCustomExercise(db: ExerciseDatabase, input: Exercise
     now, now, db.userId,
   );
   if (!row) throw new Error('Não foi possível salvar o exercício.');
+  signalSyncNeeded();
   return toExercise(row);
 }
 
@@ -88,5 +90,17 @@ export async function updateCustomExercise(db: ExerciseDatabase, id: string, inp
     new Date().toISOString(), id, db.userId,
   );
   if (!row) throw new ExerciseValidationError('Este exercício não existe ou pertence ao catálogo padrão e não pode ser editado.');
+  signalSyncNeeded();
   return toExercise(row);
+}
+
+export async function deleteCustomExercise(
+  db: ExerciseDatabase & Pick<SQLiteDatabase, 'runAsync'>,
+  id: string,
+): Promise<void> {
+  const result = await db.runAsync(
+    'DELETE FROM exercises WHERE id = ? AND is_custom = 1 AND user_id = ?', id, db.userId,
+  );
+  if (!result.changes) throw new ExerciseValidationError('Este exercício não existe ou ainda está em uso por um treino.');
+  signalSyncNeeded();
 }

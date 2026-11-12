@@ -2,6 +2,7 @@ import {
   ActiveSessionError, EmptySessionError, PersonalizedResultsError,
   SessionValidationError, validateSetValue,
 } from './model.ts';
+import { signalSyncNeeded } from '../../services/incremental-sync/events.ts';
 
 import type {
   ActiveSessionSummary, CompletedSessionSummary, SessionExercise, SessionSet,
@@ -146,6 +147,7 @@ export async function startWorkoutSession(db: SessionDatabase, workoutId: string
     if (active) throw new ActiveSessionError(active.id);
     throw cause;
   }
+  signalSyncNeeded();
   return sessionId;
 }
 
@@ -163,6 +165,7 @@ export async function updateSessionSet(db: SessionDatabase, setId: string, input
     );
     if (!result.changes) throw new SessionValidationError('Esta série não pertence a uma sessão em andamento.');
   });
+  signalSyncNeeded();
 }
 
 export async function applyQuickExerciseResult(
@@ -196,6 +199,7 @@ export async function applyQuickExerciseResult(
       value.weight, value.reps, sessionExerciseId, tx.userId, exercise.plannedSets,
     );
   });
+  signalSyncNeeded();
 }
 
 export async function uncompletePlannedExercise(db: SessionDatabase, sessionExerciseId: string): Promise<void> {
@@ -210,6 +214,7 @@ export async function uncompletePlannedExercise(db: SessionDatabase, sessionExer
     );
     if (!result.changes) throw new SessionValidationError('Este exercício não pertence a uma sessão em andamento.');
   });
+  signalSyncNeeded();
 }
 
 export async function addExtraSet(db: SessionDatabase, sessionExerciseId: string): Promise<string> {
@@ -232,6 +237,7 @@ export async function addExtraSet(db: SessionDatabase, sessionExerciseId: string
     if (!created) throw new Error('Não foi possível adicionar a série.');
     id = created.id;
   });
+  signalSyncNeeded();
   return id;
 }
 
@@ -262,6 +268,7 @@ export async function finishWorkoutSession(db: SessionDatabase, id: string, conf
     summary = { id, workoutName: session.workoutName, startedAt: session.startedAt, finishedAt, ...totals };
   });
   if (!summary) throw new Error('Não foi possível finalizar o treino.');
+  signalSyncNeeded();
   return summary;
 }
 
