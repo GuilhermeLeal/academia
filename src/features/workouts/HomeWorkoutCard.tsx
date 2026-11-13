@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { ActivityIndicator } from 'react-native';
 
+import { AnimatedReveal } from '@/components/AnimatedReveal';
 import { AppButton } from '@/components/AppButton';
 import { AppCard } from '@/components/AppCard';
 import { AppText } from '@/components/AppText';
@@ -11,8 +12,10 @@ export function HomeWorkoutCard() {
   const { selection, status, retry } = useHomeWorkout();
   const activeSession = selection?.kind === 'active' ? selection.session : null;
   const workout = selection?.kind === 'suggested' ? selection.workout : null;
+  const contentKey = `${status}:${activeSession?.id ?? workout?.id ?? selection?.kind ?? 'none'}`;
   return (
-    <AppCard>
+    <AnimatedReveal key={contentKey} distance={4} duration={160}>
+      <AppCard>
       <AppText variant="eyebrow" tone="primary">SEU TREINO</AppText>
       {status === 'loading' ? <ActivityIndicator color={colors.primary} /> : status === 'error' || !selection ? <>
         <AppText tone="secondary">Não foi possível consultar seus treinos.</AppText>
@@ -33,6 +36,7 @@ export function HomeWorkoutCard() {
         <AppText tone="secondary">Escolha exercícios e organize um treino do seu jeito.</AppText>
         <AppButton title="Criar primeiro treino" onPress={() => router.push('/workout/new')} />
       </>}
-    </AppCard>
+      </AppCard>
+    </AnimatedReveal>
   );
 }

@@ -1,6 +1,6 @@
 import 'react-native-url-polyfill/auto';
 
-import { createClient, processLock } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 import { AppState } from 'react-native';
 
 import { getSupabaseConfiguration } from '@/services/supabase/config';
@@ -24,7 +24,6 @@ export function getSupabaseClient(): SupabaseClient<Database> | null {
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: false,
-      lock: processLock,
     },
   });
   return client;

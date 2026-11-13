@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AnimatedListItem, AnimatedReveal } from '@/components/AnimatedReveal';
 import { AppButton } from '@/components/AppButton';
 import { AppPressable } from '@/components/AppPressable';
 import { AppText } from '@/components/AppText';
@@ -19,7 +20,11 @@ import type { ListRenderItemInfo, TextInputInstance } from 'react-native';
 
 const keyExtractor = (exercise: Exercise) => exercise.id;
 const openExercise = (exercise: Exercise) => router.push({ pathname: '/exercises/[id]', params: { id: exercise.id } });
-const renderExercise = ({ item }: ListRenderItemInfo<Exercise>) => <ExerciseCard exercise={item} onPress={openExercise} />;
+const renderExercise = ({ item, index }: ListRenderItemInfo<Exercise>) => (
+  <AnimatedListItem index={index} step={16} distance={5}>
+    <ExerciseCard exercise={item} onPress={openExercise} />
+  </AnimatedListItem>
+);
 
 export function ExerciseLibraryScreen() {
   const { savedName, savedId, savedAt } = useLocalSearchParams<{ savedName?: string; savedId?: string; savedAt?: string }>();
@@ -38,14 +43,18 @@ export function LibraryContent({ initialQuery = '', selection }: { initialQuery?
 
   useEffect(() => { list.current?.scrollToOffset({ offset: 0, animated: false }); }, [query]);
   const changeQuery = useCallback((value: string) => setQuery(value), []);
-  const renderItem = ({ item }: ListRenderItemInfo<Exercise>) => selection
-    ? <ExerciseCard exercise={item} onPress={selection.onSelect} selectionMode selected={selection.selectedIds.includes(item.id)} />
-    : <ExerciseCard exercise={item} onPress={openExercise} />;
+  const renderItem = ({ item, index }: ListRenderItemInfo<Exercise>) => (
+    <AnimatedListItem index={index} step={16} distance={5}>
+      {selection
+        ? <ExerciseCard exercise={item} onPress={selection.onSelect} selectionMode selected={selection.selectedIds.includes(item.id)} />
+        : <ExerciseCard exercise={item} onPress={openExercise} />}
+    </AnimatedListItem>
+  );
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom', 'left', 'right']}>
       <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={styles.header}>
+        <AnimatedReveal style={styles.header}>
           <ExerciseHeader title={selection ? 'Adicionar exercícios' : 'Exercícios'} library onBack={selection?.onDone} />
           <View style={[styles.search, focused && styles.searchFocused]}>
             <Ionicons name="search-outline" color={colors.textSecondary} size={sizes.iconSmall} />
@@ -72,14 +81,14 @@ export function LibraryContent({ initialQuery = '', selection }: { initialQuery?
             </AppText>
             {status === 'loading' && <ActivityIndicator color={colors.primary} size="small" />}
           </View>
-        </View>
+        </AnimatedReveal>
         <FlatList
           ref={list} data={items} renderItem={selection ? renderItem : renderExercise} keyExtractor={keyExtractor}
           style={styles.list} contentContainerStyle={styles.listContent}
           keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag"
           initialNumToRender={10} showsVerticalScrollIndicator={false}
           ListEmptyComponent={
-            <View style={styles.empty}>
+            <AnimatedReveal key={`${status}:${query}`} style={styles.empty} distance={4}>
               <Ionicons name={status === 'error' ? 'alert-circle-outline' : 'barbell-outline'} size={sizes.iconLarge} color={colors.primary} />
               <AppText variant="heading">
                 {status === 'loading' ? 'Abrindo sua biblioteca' : status === 'error' ? 'Não foi possível consultar os exercícios' : query.trim() ? 'Nenhum exercício encontrado' : 'Sua biblioteca está vazia'}
@@ -88,7 +97,7 @@ export function LibraryContent({ initialQuery = '', selection }: { initialQuery?
                 {status === 'loading' ? 'Seus exercícios estarão aqui em instantes.' : status === 'error' ? 'Tente consultar novamente. Seus exercícios salvos serão preservados.' : query.trim() ? 'Tente outro nome, como supino, remada ou elevação.' : 'Crie um exercício para começar.'}
               </AppText>
               {status === 'error' && <AppButton title="Tentar novamente" onPress={retry} />}
-            </View>
+            </AnimatedReveal>
           }
         />
       </KeyboardAvoidingView>

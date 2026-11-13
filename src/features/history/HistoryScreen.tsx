@@ -2,6 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AnimatedListItem, AnimatedReveal } from '@/components/AnimatedReveal';
 import { AppButton } from '@/components/AppButton';
 import { AppCard } from '@/components/AppCard';
 import { AppText } from '@/components/AppText';
@@ -15,17 +16,22 @@ export function HistoryScreen() {
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
       <View style={styles.container}>
-        <View style={styles.header}>
+        <AnimatedReveal style={styles.header}>
           <AppText variant="eyebrow" tone="primary">SUA TRAJETÓRIA</AppText>
           <AppText variant="hero" accessibilityRole="header">Histórico</AppText>
           <AppText tone="secondary">Reveja os resultados que você concluiu em cada treino.</AppText>
-        </View>
+        </AnimatedReveal>
         <FlatList
           data={status === 'ready' ? items : []}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
-          renderItem={({ item }) => <HistorySessionCard session={item} />}
-          ListEmptyComponent={status === 'loading' ? <ActivityIndicator color={colors.primary} /> : (
+          renderItem={({ item, index }) => (
+            <AnimatedListItem index={index}>
+              <HistorySessionCard session={item} />
+            </AnimatedListItem>
+          )}
+          ListEmptyComponent={<AnimatedReveal key={status} distance={4}>
+            {status === 'loading' ? <ActivityIndicator color={colors.primary} /> : (
             <AppCard>
               <Ionicons name={status === 'error' ? 'alert-circle-outline' : 'time-outline'} size={sizes.iconLarge} color={colors.primary} />
               <AppText variant="heading">
@@ -36,7 +42,8 @@ export function HistoryScreen() {
               </AppText>
               {status === 'error' && <AppButton title="Tentar novamente" onPress={retry} />}
             </AppCard>
-          )}
+            )}
+          </AnimatedReveal>}
         />
       </View>
     </SafeAreaView>

@@ -2,6 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
+import { AnimatedReveal } from '@/components/AnimatedReveal';
 import { AppButton } from '@/components/AppButton';
 import { AppCard } from '@/components/AppCard';
 import { AppPressable } from '@/components/AppPressable';
@@ -14,7 +15,7 @@ import { colors, radii, sizes, spacing } from '@/theme/tokens';
 export function HomeScreen() {
   return (
     <AppScreen>
-      <View style={styles.header}>
+      <AnimatedReveal style={styles.header} distance={3} duration={160}>
         <View style={styles.greeting}>
           <AppText variant="eyebrow" tone="primary">SEU ESPAÇO DE TREINO</AppText>
           <AppText variant="hero" accessibilityRole="header">Vamos treinar.</AppText>
@@ -22,10 +23,10 @@ export function HomeScreen() {
         <AppPressable accessibilityRole="button" accessibilityLabel="Abrir minha conta" pressedScale={0.92} onPress={() => router.navigate('/account')} style={styles.avatar}>
           <Ionicons name="person-outline" size={sizes.icon} color={colors.primary} />
         </AppPressable>
-      </View>
+      </AnimatedReveal>
 
-      <HomeWeekCard />
-      <HomeWorkoutCard />
+      <AnimatedReveal delay={30} distance={3} duration={180}><HomeWeekCard /></AnimatedReveal>
+      <AnimatedReveal delay={60} distance={3} duration={180}><HomeWorkoutCard /></AnimatedReveal>
     </AppScreen>
   );
 }
@@ -33,20 +34,25 @@ export function HomeScreen() {
 function HomeWeekCard() {
   const { summary, status, retry } = useStatsSummary();
   if (status === 'loading') {
-    return <AppCard><ActivityIndicator color={colors.primary} /></AppCard>;
+    return <AnimatedReveal key="loading" distance={4} duration={160}>
+      <AppCard><ActivityIndicator color={colors.primary} /></AppCard>
+    </AnimatedReveal>;
   }
   if (status === 'error' || !summary) {
     return (
-      <AppCard>
-        <AppText variant="heading">Não foi possível calcular sua semana</AppText>
-        <AppText tone="secondary">Seus treinos continuam salvos neste dispositivo.</AppText>
-        <AppButton title="Tentar novamente" variant="secondary" onPress={retry} />
-      </AppCard>
+      <AnimatedReveal key="error" distance={4} duration={160}>
+        <AppCard>
+          <AppText variant="heading">Não foi possível calcular sua semana</AppText>
+          <AppText tone="secondary">Seus treinos continuam salvos neste dispositivo.</AppText>
+          <AppButton title="Tentar novamente" variant="secondary" onPress={retry} />
+        </AppCard>
+      </AnimatedReveal>
     );
   }
   const weekCount = `${summary.completedThisWeek} ${summary.completedThisWeek === 1 ? 'treino' : 'treinos'}`;
   return (
-    <AppCard style={styles.weekCard}>
+    <AnimatedReveal key={`${summary.currentStreak}:${summary.completedThisWeek}`} distance={4} duration={160}>
+      <AppCard style={styles.weekCard}>
       <View style={styles.row}>
         <View style={styles.inline}>
           <Ionicons name="flame" color={colors.primary} size={sizes.icon} />
@@ -79,7 +85,8 @@ function HomeWeekCard() {
           : `${weekCount} concluído${summary.completedThisWeek === 1 ? '' : 's'} nesta semana.`}
       </AppText>
       <AppButton title="Ver estatísticas e evolução" variant="secondary" onPress={() => router.push('/stats')} />
-    </AppCard>
+      </AppCard>
+    </AnimatedReveal>
   );
 }
 

@@ -6,6 +6,7 @@ import { AppPressable } from '@/components/AppPressable';
 import { AppText } from '@/components/AppText';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { colors, opacity, radii, sizes, spacing, typography } from '@/theme/tokens';
+import { animateTiming, motion } from '@/utils/animations';
 
 export interface SessionSetDraft {
   weight: string;
@@ -31,7 +32,7 @@ export function SessionSetRow({ setNumber, value, disabled, onChange, onToggle }
       check.setValue(target);
       return;
     }
-    const animation = Animated.timing(check, { toValue: target, duration: 150, useNativeDriver: true });
+    const animation = animateTiming(check, target, motion.feedback, reducedMotion);
     animation.start();
     return () => animation.stop();
   }, [check, reducedMotion, value.completed]);

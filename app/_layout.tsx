@@ -13,6 +13,7 @@ import { useReducedMotion } from '@/hooks/useReducedMotion';
 import '@/services/initial-sync/development';
 import { IncrementalSyncProvider } from '@/services/incremental-sync/IncrementalSyncProvider';
 import { colors, spacing } from '@/theme/tokens';
+import { motion } from '@/utils/animations';
 
 import type { ErrorBoundaryProps } from 'expo-router';
 
@@ -71,8 +72,10 @@ function AuthenticatedRoutes({ reducedMotion }: { reducedMotion: boolean }) {
             screenOptions={{
               headerShown: false,
               contentStyle: { backgroundColor: colors.background },
-              animation: reducedMotion ? 'none' : 'fade',
-              animationDuration: 180,
+              animation: reducedMotion ? 'none' : 'simple_push',
+              animationDuration: motion.screen,
+              animationMatchesGesture: true,
+              gestureEnabled: true,
             }}
           >
             <Stack.Screen name="(tabs)" />
@@ -85,7 +88,13 @@ function AuthenticatedRoutes({ reducedMotion }: { reducedMotion: boolean }) {
             <Stack.Screen name="workout/[id]/edit" />
             <Stack.Screen name="session/[id]" />
             <Stack.Screen name="session/[id]/exercise/[exerciseId]" />
-            <Stack.Screen name="session/[id]/summary" />
+            <Stack.Screen
+              name="session/[id]/summary"
+              options={{
+                animation: reducedMotion ? 'none' : 'fade_from_bottom',
+                animationDuration: motion.screen,
+              }}
+            />
             <Stack.Screen name="history/[id]" />
             <Stack.Screen name="stats" />
             <Stack.Screen name="stats/summary" />

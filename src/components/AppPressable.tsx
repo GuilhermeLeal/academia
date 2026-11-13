@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Animated, Pressable } from 'react-native';
 
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { animateTiming, motion } from '@/utils/animations';
 
 import type { GestureResponderEvent, PressableProps, StyleProp, ViewStyle } from 'react-native';
 
@@ -12,25 +13,21 @@ type Props = Omit<PressableProps, 'style'> & {
   pressedScale?: number;
 };
 
-export function AppPressable({ style, pressedScale = 0.98, onPressIn, onPressOut, disabled, ...props }: Props) {
+export function AppPressable({ style, pressedScale = 0.975, onPressIn, onPressOut, disabled, ...props }: Props) {
   const reducedMotion = useReducedMotion();
   const [pressed] = useState(() => new Animated.Value(0));
 
-  function animate(toValue: number, duration: number) {
-    Animated.timing(pressed, {
-      toValue,
-      duration: reducedMotion ? 0 : duration,
-      useNativeDriver: true,
-    }).start();
-  }
+  useEffect(() => () => pressed.stopAnimation(), [pressed]);
 
   function pressIn(event: GestureResponderEvent) {
-    animate(1, 90);
+    pressed.stopAnimation();
+    animateTiming(pressed, 1, motion.pressIn, reducedMotion).start();
     onPressIn?.(event);
   }
 
   function pressOut(event: GestureResponderEvent) {
-    animate(0, 140);
+    pressed.stopAnimation();
+    animateTiming(pressed, 0, motion.pressOut, reducedMotion).start();
     onPressOut?.(event);
   }
 
@@ -42,7 +39,7 @@ export function AppPressable({ style, pressedScale = 0.98, onPressIn, onPressOut
       onPressOut={pressOut}
       style={[
         {
-          opacity: pressed.interpolate({ inputRange: [0, 1], outputRange: [1, 0.82] }),
+          opacity: pressed.interpolate({ inputRange: [0, 1], outputRange: [1, 0.86] }),
           transform: reducedMotion ? undefined : [{
             scale: pressed.interpolate({ inputRange: [0, 1], outputRange: [1, pressedScale] }),
           }],

@@ -1,6 +1,7 @@
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AnimatedReveal } from '@/components/AnimatedReveal';
 import { colors, sizes, spacing } from '@/theme/tokens';
 
 import type { PropsWithChildren } from 'react';
@@ -11,7 +12,7 @@ export function AppScreen({ children, bottomInset = false }: Props) {
   return (
     <SafeAreaView style={styles.screen} edges={bottomInset ? ['top', 'left', 'right', 'bottom'] : ['top', 'left', 'right']}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-        <View style={styles.content}>{children}</View>
+        <AnimatedReveal style={styles.content}>{children}</AnimatedReveal>
       </ScrollView>
     </SafeAreaView>
   );

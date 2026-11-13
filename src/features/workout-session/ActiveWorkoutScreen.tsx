@@ -2,14 +2,16 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 
-import { AnimatedReveal } from '@/components/AnimatedReveal';
+import { AnimatedListItem, AnimatedReveal } from '@/components/AnimatedReveal';
 import { AppButton } from '@/components/AppButton';
 import { AppCard } from '@/components/AppCard';
 import { AppScreen } from '@/components/AppScreen';
 import { AppText } from '@/components/AppText';
 import { useWorkoutDatabase } from '@/features/workouts/useWorkoutData';
 import { WorkoutHeader } from '@/features/workouts/WorkoutHeader';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { colors, spacing } from '@/theme/tokens';
+import { animateNextLayout } from '@/utils/animations';
 
 import { EmptySessionError, elapsedSeconds, formatDuration, SessionValidationError } from './model';
 import { QuickExerciseCard } from './QuickExerciseCard';
@@ -49,6 +51,7 @@ function ActiveSessionForm({ session, reload }: { session: WorkoutSession; reloa
   const [busy, setBusy] = useState(false);
   const [confirmEmpty, setConfirmEmpty] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
@@ -62,7 +65,7 @@ function ActiveSessionForm({ session, reload }: { session: WorkoutSession; reloa
       await finishWorkoutSession(db, session.id, allowEmpty);
       router.replace({ pathname: '/session/[id]/summary', params: { id: session.id } });
     } catch (cause) {
-      if (cause instanceof EmptySessionError) setConfirmEmpty(true);
+      if (cause instanceof EmptySessionError) { animateNextLayout(reducedMotion); setConfirmEmpty(true); }
       else setError(cause instanceof SessionValidationError ? cause.message : 'Não foi possível finalizar o treino. Tente novamente.');
     } finally { setBusy(false); }
   }
@@ -75,8 +78,10 @@ function ActiveSessionForm({ session, reload }: { session: WorkoutSession; reloa
       <AppText variant="title" tone="primary" accessibilityLabel={`Tempo de treino ${duration}`}>{duration}</AppText>
     </View>
     <AppText variant="caption" tone="secondary">Informe um resultado por exercício ou abra a seta para editar série por série.</AppText>
-    {session.exercises.map((exercise) => (
-      <QuickExerciseCard key={exercise.id} sessionId={session.id} exercise={exercise} onSaved={reload} />
+    {session.exercises.map((exercise, index) => (
+      <AnimatedListItem key={exercise.id} index={index} limit={6} distance={5}>
+        <QuickExerciseCard sessionId={session.id} exercise={exercise} onSaved={reload} />
+      </AnimatedListItem>
     ))}
     {error && <AppText tone="danger" accessibilityRole="alert">{error}</AppText>}
     {confirmEmpty ? <AnimatedReveal>
@@ -84,7 +89,7 @@ function ActiveSessionForm({ session, reload }: { session: WorkoutSession; reloa
         <AppText variant="heading">Finalizar sem séries concluídas?</AppText>
         <AppText tone="secondary">Nenhuma série está marcada como concluída. Os campos preenchidos continuarão salvos no resumo da sessão.</AppText>
         <AppButton title="Finalizar mesmo assim" loading={busy} onPress={() => void finish(true)} />
-        <AppButton title="Continuar treino" variant="secondary" disabled={busy} onPress={() => setConfirmEmpty(false)} />
+        <AppButton title="Continuar treino" variant="secondary" disabled={busy} onPress={() => { animateNextLayout(reducedMotion); setConfirmEmpty(false); }} />
       </AppCard>
     </AnimatedReveal> : <AppButton title="Finalizar treino" loading={busy} onPress={() => void finish(false)} />}
   </>;

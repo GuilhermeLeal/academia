@@ -10,7 +10,9 @@ import { AppText } from '@/components/AppText';
 import { ActiveSessionError, SessionValidationError } from '@/features/workout-session/model';
 import { startWorkoutSession } from '@/features/workout-session/repository';
 import { useActiveWorkoutSession } from '@/features/workout-session/useWorkoutSession';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { colors } from '@/theme/tokens';
+import { animateNextLayout } from '@/utils/animations';
 
 import { formatReps } from './model';
 import { deleteWorkout, duplicateWorkout } from './repository';
@@ -33,6 +35,7 @@ function WorkoutDetail({ id }: { id: string }) {
   const [error, setError] = useState<string | null>(null);
   const [destination, setDestination] = useState<Href | null>(null);
   const locked = useRef(false);
+  const reducedMotion = useReducedMotion();
   usePreventRemove(busy, () => {});
   useEffect(() => { if (destination && !busy) router.replace(destination); }, [destination, busy]);
 
@@ -101,9 +104,9 @@ function WorkoutDetail({ id }: { id: string }) {
             <AppText variant="heading">Excluir este treino?</AppText>
             <AppText tone="secondary">O treino e suas configurações serão excluídos. Os exercícios continuarão na biblioteca.</AppText>
             <AppButton title="Confirmar exclusão" disabled={busy} onPress={() => void act('delete')} />
-            <AppButton title="Cancelar" variant="secondary" disabled={busy} onPress={() => setConfirmDelete(false)} />
+            <AppButton title="Cancelar" variant="secondary" disabled={busy} onPress={() => { animateNextLayout(reducedMotion); setConfirmDelete(false); }} />
           </AppCard>
-        </AnimatedReveal> : <AppButton title="Excluir treino" variant="secondary" disabled={busy} onPress={() => setConfirmDelete(true)} />}
+        </AnimatedReveal> : <AppButton title="Excluir treino" variant="secondary" disabled={busy} onPress={() => { animateNextLayout(reducedMotion); setConfirmDelete(true); }} />}
       </>}
     </AppScreen>
   );

@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, TextInput, View } from 'react-native';
 
+import { AnimatedReveal } from '@/components/AnimatedReveal';
 import { AppButton } from '@/components/AppButton';
 import { AppCard } from '@/components/AppCard';
 import { AppScreen } from '@/components/AppScreen';
 import { AppText } from '@/components/AppText';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { colors, radii, sizes, spacing, typography } from '@/theme/tokens';
+import { animateNextLayout } from '@/utils/animations';
 
 import { useAuth } from './AuthProvider';
 import { CredentialsValidationError, normalizePhone, validatePin } from './credentials';
@@ -20,6 +23,7 @@ export function AuthScreen() {
   const [confirmation, setConfirmation] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const reducedMotion = useReducedMotion();
 
   const submit = async () => {
     setError(null);
@@ -71,9 +75,13 @@ export function AuthScreen() {
           />
           <Field label="PIN" value={pin} onChangeText={setPin} pin />
           {mode === 'sign-up' && (
-            <Field label="Confirmar PIN" value={confirmation} onChangeText={setConfirmation} pin />
+            <AnimatedReveal distance={4} duration={160}>
+              <Field label="Confirmar PIN" value={confirmation} onChangeText={setConfirmation} pin />
+            </AnimatedReveal>
           )}
-          {error && <AppText tone="danger" accessibilityLiveRegion="polite">{error}</AppText>}
+          {error && <AnimatedReveal distance={4} duration={160}>
+            <AppText tone="danger" accessibilityLiveRegion="polite">{error}</AppText>
+          </AnimatedReveal>}
           <AppButton
             title={mode === 'sign-in' ? 'Entrar' : 'Criar conta'}
             loading={submitting}
@@ -85,6 +93,7 @@ export function AuthScreen() {
             variant="secondary"
             disabled={submitting}
             onPress={() => {
+              animateNextLayout(reducedMotion);
               setMode((value) => value === 'sign-in' ? 'sign-up' : 'sign-in');
               setConfirmation('');
               setError(null);

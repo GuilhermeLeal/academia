@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AnimatedListItem, AnimatedReveal } from '@/components/AnimatedReveal';
 import { AppButton } from '@/components/AppButton';
 import { AppCard } from '@/components/AppCard';
 import { AppPressable } from '@/components/AppPressable';
@@ -15,14 +16,15 @@ export function WorkoutsScreen() {
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
       <View style={styles.container}>
-        <View style={styles.header}>
+        <AnimatedReveal style={styles.header}>
           <AppText variant="eyebrow" tone="primary">SUA ROTINA</AppText>
           <AppText variant="hero" accessibilityRole="header">Treinos</AppText>
           <AppButton title="+ Criar treino" onPress={() => router.push('/workout/new')} />
           <AppButton title="Biblioteca de exercícios" variant="secondary" onPress={() => router.push('/exercises')} />
-        </View>
+        </AnimatedReveal>
         <FlatList data={status === 'ready' ? items : []} keyExtractor={(item) => item.id} contentContainerStyle={styles.list}
-          renderItem={({ item }) => (
+          renderItem={({ item, index }) => (
+            <AnimatedListItem index={index}>
             <AppPressable accessibilityRole="button" accessibilityLabel={`${item.name}, ${item.exerciseCount} exercícios`}
               onPress={() => router.push({ pathname: '/workout/[id]', params: { id: item.id } })}>
               <AppCard>
@@ -31,14 +33,17 @@ export function WorkoutsScreen() {
                 <AppText variant="label" tone="primary">{item.exerciseCount} exercícios</AppText>
               </AppCard>
             </AppPressable>
+            </AnimatedListItem>
           )}
-          ListEmptyComponent={status === 'loading' ? <ActivityIndicator color={colors.primary} /> : (
+          ListEmptyComponent={<AnimatedReveal key={status} distance={4}>
+            {status === 'loading' ? <ActivityIndicator color={colors.primary} /> : (
             <AppCard>
               <AppText variant="heading">{status === 'error' ? 'Não foi possível consultar seus treinos' : 'Sua rotina começa aqui'}</AppText>
               <AppText tone="secondary">{status === 'error' ? 'Tente novamente. Seus dados estão preservados.' : 'Escolha exercícios da biblioteca e organize seu primeiro treino.'}</AppText>
               <AppButton title={status === 'error' ? 'Tentar novamente' : 'Criar primeiro treino'} onPress={status === 'error' ? retry : () => router.push('/workout/new')} />
             </AppCard>
-          )} />
+            )}
+          </AnimatedReveal>} />
       </View>
     </SafeAreaView>
   );

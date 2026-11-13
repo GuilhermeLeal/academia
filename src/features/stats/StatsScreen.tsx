@@ -10,13 +10,16 @@ import { AppScreen } from '@/components/AppScreen';
 import { AppText } from '@/components/AppText';
 import { formatHistoryDate, formatHistoryTime, formatSetResult } from '@/features/history/model';
 import { WorkoutHeader } from '@/features/workouts/WorkoutHeader';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { colors, radii, sizes, spacing } from '@/theme/tokens';
+import { animateNextLayout } from '@/utils/animations';
 
 import { formatMonthTitle, formatStatsDuration, normalizeLocalMonth, shiftLocalMonth } from './model';
 import { MonthlyCalendar } from './MonthlyCalendar';
 import { useExerciseEvolution, useMonthlyStats, useStatsOverview } from './useStats';
 
 export function StatsScreen() {
+  const reducedMotion = useReducedMotion();
   const [selectedMonth, setSelectedMonth] = useState(() => normalizeLocalMonth(new Date()));
   const overview = useStatsOverview();
   const monthly = useMonthlyStats(selectedMonth);
@@ -46,8 +49,8 @@ export function StatsScreen() {
           month={selectedMonth}
           summary={monthly.summary}
           status={monthly.status}
-          onPrevious={() => setSelectedMonth((value) => shiftLocalMonth(value, -1))}
-          onNext={() => setSelectedMonth((value) => shiftLocalMonth(value, 1))}
+          onPrevious={() => { animateNextLayout(reducedMotion); setSelectedMonth((value) => shiftLocalMonth(value, -1)); }}
+          onNext={() => { animateNextLayout(reducedMotion); setSelectedMonth((value) => shiftLocalMonth(value, 1)); }}
           onRetry={monthly.retry}
         />
 
@@ -95,7 +98,7 @@ export function StatsScreen() {
                     key={exercise.exerciseId}
                     accessibilityRole="button"
                     accessibilityState={{ selected }}
-                    onPress={() => setRequestedExerciseId(exercise.exerciseId)}
+                    onPress={() => { animateNextLayout(reducedMotion); setRequestedExerciseId(exercise.exerciseId); }}
                     style={[styles.exercisePill, selected && styles.exercisePillSelected]}
                   >
                     <AppText variant="label" tone={selected ? 'onPrimary' : 'default'}>{exercise.exerciseName}</AppText>

@@ -11,6 +11,7 @@ import { AppText } from '@/components/AppText';
 import { useWorkoutDatabase } from '@/features/workouts/useWorkoutData';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { colors, radii, sizes, spacing, typography } from '@/theme/tokens';
+import { animateNextLayout, animateTiming, motion } from '@/utils/animations';
 
 import { PersonalizedResultsError, SessionValidationError, summarizeExerciseResult } from './model';
 import { applyQuickExerciseResult, uncompletePlannedExercise } from './repository';
@@ -46,7 +47,7 @@ function QuickExerciseCardContent({ sessionId, exercise, onSaved, result }: Prop
       completion.setValue(target);
       return;
     }
-    const animation = Animated.timing(completion, { toValue: target, duration: 180, useNativeDriver: true });
+    const animation = animateTiming(completion, target, motion.content, reducedMotion);
     animation.start();
     return () => animation.stop();
   }, [completion, reducedMotion, result.allPlannedCompleted]);
@@ -72,9 +73,10 @@ function QuickExerciseCardContent({ sessionId, exercise, onSaved, result }: Prop
         reps: Number(reps),
       }, allowOverwrite);
       setConfirmOverwrite(false);
+      animateNextLayout(reducedMotion);
       onSaved();
     } catch (cause) {
-      if (cause instanceof PersonalizedResultsError) setConfirmOverwrite(true);
+      if (cause instanceof PersonalizedResultsError) { animateNextLayout(reducedMotion); setConfirmOverwrite(true); }
       else setError(cause instanceof SessionValidationError ? cause.message : 'Não foi possível concluir o exercício. Tente novamente.');
     } finally { setBusy(false); }
   }
@@ -82,7 +84,7 @@ function QuickExerciseCardContent({ sessionId, exercise, onSaved, result }: Prop
   async function uncomplete() {
     if (busy) return;
     setBusy(true); setError(null);
-    try { await uncompletePlannedExercise(db, exercise.id); onSaved(); }
+    try { await uncompletePlannedExercise(db, exercise.id); animateNextLayout(reducedMotion); onSaved(); }
     catch { setError('Não foi possível desmarcar o exercício. Tente novamente.'); }
     finally { setBusy(false); }
   }
@@ -151,7 +153,7 @@ function QuickExerciseCardContent({ sessionId, exercise, onSaved, result }: Prop
         <AppText variant="label">Substituir valores personalizados?</AppText>
         <AppText variant="caption" tone="secondary">Apenas as {exercise.plannedSets} séries planejadas receberão {weight.replace(',', '.')} kg × {reps} reps. Séries extras não serão alteradas.</AppText>
         <AppButton title="Aplicar às séries planejadas" loading={busy} onPress={() => void complete(true)} />
-        <AppButton title="Cancelar" variant="secondary" disabled={busy} onPress={() => setConfirmOverwrite(false)} />
+        <AppButton title="Cancelar" variant="secondary" disabled={busy} onPress={() => { animateNextLayout(reducedMotion); setConfirmOverwrite(false); }} />
       </AnimatedReveal> : result.allPlannedCompleted
         ? <AppButton title="Desmarcar exercício" variant="secondary" loading={busy} onPress={() => void uncomplete()} />
         : <AppButton title="Concluir exercício" loading={busy} onPress={() => void complete(false)} />}
