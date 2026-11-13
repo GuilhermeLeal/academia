@@ -41,6 +41,7 @@ credentials.json
 *.db-wal
 *.sqlite
 coverage/
+.repdb-assets/
 
 # typescript
 *.tsbuildinfo

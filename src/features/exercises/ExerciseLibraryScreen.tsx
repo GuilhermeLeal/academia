@@ -1,17 +1,19 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, KeyboardAvoidingView, Modal, Platform, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AnimatedListItem, AnimatedReveal } from '@/components/AnimatedReveal';
 import { AppButton } from '@/components/AppButton';
 import { AppPressable } from '@/components/AppPressable';
+import { AppScreen } from '@/components/AppScreen';
 import { AppText } from '@/components/AppText';
 import { colors, radii, sizes, spacing, typography } from '@/theme/tokens';
 
 import { ExerciseCard } from './ExerciseCard';
 import { ExerciseHeader } from './ExerciseHeader';
+import { ExerciseImages } from './ExerciseImages';
 import { exerciseLimits } from './types';
 import { useExerciseSearch } from './useExerciseSearch';
 
@@ -37,6 +39,7 @@ type Selection = { selectedIds: string[]; onSelect: (exercise: Exercise) => void
 export function LibraryContent({ initialQuery = '', selection }: { initialQuery?: string; selection?: Selection }) {
   const [query, setQuery] = useState(initialQuery);
   const [focused, setFocused] = useState(false);
+  const [preview, setPreview] = useState<Exercise | null>(null);
   const list = useRef<FlatList<Exercise>>(null);
   const input = useRef<TextInputInstance>(null);
   const { items, status, retry } = useExerciseSearch(query);
@@ -46,7 +49,7 @@ export function LibraryContent({ initialQuery = '', selection }: { initialQuery?
   const renderItem = ({ item, index }: ListRenderItemInfo<Exercise>) => (
     <AnimatedListItem index={index} step={16} distance={5}>
       {selection
-        ? <ExerciseCard exercise={item} onPress={selection.onSelect} selectionMode selected={selection.selectedIds.includes(item.id)} />
+        ? <ExerciseCard exercise={item} onPress={selection.onSelect} onPreview={setPreview} selectionMode selected={selection.selectedIds.includes(item.id)} />
         : <ExerciseCard exercise={item} onPress={openExercise} />}
     </AnimatedListItem>
   );
@@ -86,7 +89,7 @@ export function LibraryContent({ initialQuery = '', selection }: { initialQuery?
           ref={list} data={items} renderItem={selection ? renderItem : renderExercise} keyExtractor={keyExtractor}
           style={styles.list} contentContainerStyle={styles.listContent}
           keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag"
-          initialNumToRender={10} showsVerticalScrollIndicator={false}
+          initialNumToRender={10} maxToRenderPerBatch={6} windowSize={3} showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <AnimatedReveal key={`${status}:${query}`} style={styles.empty} distance={4}>
               <Ionicons name={status === 'error' ? 'alert-circle-outline' : 'barbell-outline'} size={sizes.iconLarge} color={colors.primary} />
@@ -101,6 +104,19 @@ export function LibraryContent({ initialQuery = '', selection }: { initialQuery?
           }
         />
       </KeyboardAvoidingView>
+      <Modal visible={preview !== null} animationType="slide" onRequestClose={() => setPreview(null)}>
+        {preview && <>
+          <AppScreen>
+            <AppButton title="Voltar à seleção" variant="secondary" onPress={() => setPreview(null)} />
+            <AppText variant="title">{preview.name}</AppText>
+            <AppText tone="secondary">{preview.muscleGroup} · {preview.equipment}</AppText>
+            <ExerciseImages imageUri={preview.imageUri} name={preview.name} />
+            {selection && !selection.selectedIds.includes(preview.id) && <AppButton
+              title="Adicionar ao treino" onPress={() => { selection.onSelect(preview); setPreview(null); }}
+            />}
+          </AppScreen>
+        </>}
+      </Modal>
     </SafeAreaView>
   );
 }

@@ -145,7 +145,7 @@ BEGIN
   ), ARRAY['23503'], 'cannot move set to B session exercise');
 
   SELECT count(*) INTO count_rows FROM public.exercises WHERE NOT is_custom;
-  PERFORM pg_temp.assert_true(count_rows = 19, 'one shared catalog is visible');
+  PERFORM pg_temp.assert_true(count_rows = 150, 'one shared catalog is visible');
   UPDATE public.exercises SET name = 'Hacked' WHERE NOT is_custom;
   GET DIAGNOSTICS affected = ROW_COUNT;
   PERFORM pg_temp.assert_true(affected = 0, 'standard catalog cannot be edited');
@@ -210,7 +210,7 @@ SELECT pg_temp.assert_true(
   AND (SELECT count(*) FROM public.workouts WHERE user_id = auth.uid()) = 1,
   'switching account exposes only B ownership'
 );
-SELECT pg_temp.assert_true((SELECT count(*) FROM public.exercises WHERE NOT is_custom) = 19,
+SELECT pg_temp.assert_true((SELECT count(*) FROM public.exercises WHERE NOT is_custom) = 150,
   'B sees the same shared catalog without A custom exercises');
 
 RESET ROLE;

@@ -13,6 +13,7 @@
     "expo-constants": "~58.0.16",
     "expo-crypto": "~58.0.8",
     "expo-font": "~58.0.12",
+    "expo-image": "~58.0.18",
     "expo-linking": "~58.0.17",
     "expo-router": "~58.0.31",
     "expo-secure-store": "~58.0.3",
@@ -33,9 +34,13 @@
     "eslint": "9.39.5",
     "eslint-config-expo": "~58.0.4",
     "eslint-import-resolver-typescript": "3.10.1",
+    "sharp": "0.35.5",
     "typescript": "~6.0.3"
   },
   "scripts": {
+    "catalog:sql": "node --experimental-strip-types scripts/generate-exercise-migration.ts",
+    "catalog:assets": "node --experimental-strip-types scripts/prepare-exercise-assets.ts",
+    "catalog:upload": "node --env-file-if-exists=.env --experimental-strip-types scripts/upload-exercise-assets.ts",
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",

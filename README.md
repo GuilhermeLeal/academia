@@ -13,7 +13,7 @@ Aplicativo mobile para treinos pessoais e familiares. A prioridade é abrir, enc
 - `expo-crypto`: SHA-256 da credencial técnica versionada; o PIN nunca é persistido.
 - npm, Git e ESLint com a configuração oficial Expo.
 
-Sem backend próprio, Docker, ORM, biblioteca de UI, gráficos, analytics ou serviços de SMS. Fontes do sistema e ícones Ionicons, sem imagens remotas nem biblioteca adicional de animações.
+Sem backend próprio, Docker, ORM, biblioteca de UI, gráficos, analytics ou serviços de SMS. Fontes do sistema e ícones Ionicons. Ilustrações de exercícios via Supabase Storage, com cache em disco pelo `expo-image`.
 
 ## Instalar
 
@@ -49,13 +49,15 @@ Para testar a fase 6: conclua treinos em dias da semana atual e volte à Home. O
 
 Para testar a criação da fase 3: informe um nome, toque em **Adicionar exercícios**, pesquise `supino` e selecione exercícios da biblioteca. Os já adicionados ficam marcados e não podem ser repetidos. Conclua a seleção, configure séries/reps/descanso e use as setas para ordenar. **Salvar treino** abre os detalhes; **Editar treino** permite modificar ou remover associações. Nos detalhes também há **Duplicar treino** e **Excluir treino**, com confirmação dentro da tela. Feche e reabra o app para conferir a persistência. Na fase atual, **Iniciar treino** abre a execução descrita acima.
 
-Para testar a fase 2: **Treinos → Biblioteca de exercícios**. Pesquise `supino` (quatro variantes), `elevacao`, `triceps frances` ou o alias `voador`. Limpar a busca exibe todo o catálogo. Toque em **Criar exercício**, informe nome/grupo muscular e, opcionalmente, equipamento. Ao salvar, a biblioteca pesquisa o nome salvo. Toque no card personalizado para editar. Feche e reabra o app para conferir a persistência.
+Para testar a biblioteca: **Treinos → Biblioteca de exercícios**. Pesquise `supino`, `elevacao`, `triceps frances`, `serrote` ou o alias `voador`. Limpar a busca exibe todo o catálogo. Toque em **Criar exercício**, informe nome/grupo muscular e, opcionalmente, equipamento. Ao salvar, a biblioteca pesquisa o nome salvo. Toque no card personalizado para editar. Feche e reabra o app para conferir a persistência.
 
-O catálogo inicial tem 19 exercícios de validação, somente leitura, e miniaturas placeholder. As imagens não são baixadas. A biblioteca consulta o SQLite local; nenhum caractere digitado gera chamada de rede.
+O catálogo padrão tem **150 exercícios**, somente leitura, preservando os 19 UUIDs originais. A busca por nomes/aliases em pt-BR e inglês consulta somente o SQLite. Miniaturas WebP são carregadas pela lista virtualizada; o detalhe e o botão de visualizar na seleção mostram início → contração, ou a posição estática. Veja [curadoria, licença e publicação dos assets](docs/exercise-catalog.md).
+
+Exercise data by [RepDB (repdb.co)](https://repdb.co). Uso no app conforme a [RepDB Free Tier License](https://github.com/RepDB/exercise-dataset/blob/8e2fb4a6e1131223769332e401833eb6d40c483a/LICENSE-DATA.md). Os assets não fazem parte do repositório público.
 
 Se não conectar, permita Node.js na rede privada do Firewall do Windows, desative VPNs e confira se a rede permite comunicação entre dispositivos. Após adicionar rotas, encerre o Metro anterior e execute `npx expo start --clear`. Não é necessário Android Studio, EAS Build nem conta paga para este teste pelo Expo Go no Android.
 
-O Expo Go depende do servidor de desenvolvimento para carregar o aplicativo. Biblioteca, treinos e sessões salvam os dados no SQLite e funcionam localmente com o app carregado. Cache remoto e sincronização ainda serão implementados. Um APK independente fica para uma etapa de distribuição.
+O Expo Go depende do servidor de desenvolvimento para carregar o aplicativo. Biblioteca, treinos e sessões salvam os dados no SQLite e funcionam localmente com o app carregado. Imagens usam cache local após o primeiro carregamento; o Sync Engine sincroniza os dados privados da conta. Um APK independente fica para uma etapa de distribuição.
 
 O código também tem alvo iOS e comando de exportação; este ambiente Windows não compila um binário iOS. A validação inicial solicitada é Android.
 

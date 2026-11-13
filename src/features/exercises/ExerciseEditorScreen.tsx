@@ -9,8 +9,8 @@ import { AppText } from '@/components/AppText';
 import { useWorkoutDatabase } from '@/features/workouts/useWorkoutData';
 import { colors, radii, sizes, spacing, typography } from '@/theme/tokens';
 
-import { ExerciseThumbnail } from './ExerciseCard';
 import { ExerciseHeader } from './ExerciseHeader';
+import { ExerciseImages } from './ExerciseImages';
 import { createCustomExercise, ExerciseValidationError, getExercise, updateCustomExercise } from './repository';
 import { exerciseLimits } from './types';
 
@@ -89,11 +89,11 @@ function ExerciseEditorForm({ id }: { id?: string }) {
           </AppCard>
         ) : isStandard && exercise ? (
           <AppCard>
-            <ExerciseThumbnail imageUri={exercise.imageUri} />
-            <AppText variant="eyebrow" tone="primary">CATÁLOGO INICIAL</AppText>
+            <AppText variant="eyebrow" tone="primary">CATÁLOGO PADRÃO</AppText>
             <AppText variant="title">{exercise.name}</AppText>
             <AppText>{exercise.muscleGroup}</AppText>
             {exercise.equipment && <AppText tone="secondary">{exercise.equipment}</AppText>}
+            <ExerciseImages imageUri={exercise.imageUri} name={exercise.name} />
             <AppText variant="caption" tone="secondary">Este exercício faz parte do catálogo padrão e não pode ser editado. Você pode criar seu próprio exercício na biblioteca.</AppText>
           </AppCard>
         ) : (

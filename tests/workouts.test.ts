@@ -46,6 +46,7 @@ test('migration 3 preserves version 2 exercises and metadata, rolls back on fail
     );
     assert(custom);
     const existingCount = await db.getFirstAsync<{ total: number }>('SELECT COUNT(*) AS total FROM exercises');
+    assert.equal(existingCount?.total, 20);
     await assert.rejects(initializeDatabase({ ...db, async execAsync(sql) {
       await db.execAsync(sql);
       if (sql.includes('CREATE TABLE workouts')) throw new Error('Migration interrupted');
@@ -55,7 +56,7 @@ test('migration 3 preserves version 2 exercises and metadata, rolls back on fail
     await initializeDatabase(db);
     await initializeDatabase(db);
     assert.equal((await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version'))?.user_version, DATABASE_VERSION);
-    assert.equal((await db.getFirstAsync<{ total: number }>('SELECT COUNT(*) AS total FROM exercises'))?.total, existingCount?.total);
+    assert.equal((await db.getFirstAsync<{ total: number }>('SELECT COUNT(*) AS total FROM exercises'))?.total, 151);
     assert.equal((await db.getFirstAsync<{ name: string }>('SELECT name FROM exercises WHERE id = ?', custom.id))?.name, 'Remada familiar');
     assert.equal((await db.getFirstAsync<{ value: string }>("SELECT value FROM app_metadata WHERE key = 'family'"))?.value, 'preserved');
     assert.deepEqual(await listWorkouts(db), []);

@@ -80,7 +80,7 @@ test('migration 4 upgrades version 3 transactionally and preserves workouts and 
     await initializeDatabase(db); await initializeDatabase(db);
     assert.equal((await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version'))?.user_version, DATABASE_VERSION);
     assert.equal((await db.getFirstAsync<{ name: string }>('SELECT name FROM workouts WHERE id = ?', template.id))?.name, 'Treino A');
-    assert.equal((await db.getFirstAsync<{ total: number }>('SELECT COUNT(*) AS total FROM exercises'))?.total, 19);
+    assert.equal((await db.getFirstAsync<{ total: number }>('SELECT COUNT(*) AS total FROM exercises'))?.total, 150);
   } finally { database.close(); }
 });
 

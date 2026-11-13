@@ -102,8 +102,8 @@ test('initial upload/restore round-trips a whole account through SDK + PostgreSQ
       assert.deepEqual(await getSession(destination.local, ids.activeId), await getSession(origin.local, ids.activeId));
       assert.equal((await getActiveSession(destination.local))?.id, ids.activeId);
       assert.equal(signature(await readLocalSnapshot(b)), beforeB);
-      assert.equal(destination.database.prepare('SELECT count(*) AS n FROM exercises WHERE is_custom = 0').get()?.n, 19);
-      assert.equal((await cloud.db.query<{ n: number }>('SELECT count(*)::integer AS n FROM exercises WHERE NOT is_custom')).rows[0]?.n, 19);
+      assert.equal(destination.database.prepare('SELECT count(*) AS n FROM exercises WHERE is_custom = 0').get()?.n, 150);
+      assert.equal((await cloud.db.query<{ n: number }>('SELECT count(*)::integer AS n FROM exercises WHERE NOT is_custom')).rows[0]?.n, 150);
     });
 
     await t.test('populated local restore and divergent upload report conflict without overwriting either side', async () => {

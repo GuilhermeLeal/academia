@@ -25,7 +25,7 @@ const catalog = [
   ['019', 'Tríceps Francês', 'Tríceps', 'Halteres', ['triceps acima da cabeca']],
 ] as const;
 
-export const CATALOG_SIZE = catalog.length;
+export { CATALOG_SIZE } from './catalog.ts';
 
 /** Called inside migration 2's transaction. Conflict handling never replaces existing rows. */
 export async function seedExercises(db: Pick<SQLiteDatabase, 'runAsync'>): Promise<void> {

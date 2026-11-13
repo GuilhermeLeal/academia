@@ -3,12 +3,13 @@ import { migrateWorkouts } from './migrations/003-workouts.ts';
 import { migrateWorkoutSessions } from './migrations/004-workout-sessions.ts';
 import { migrateUserOwnership } from './migrations/005-user-ownership.ts';
 import { migrateIncrementalSync } from './migrations/006-incremental-sync.ts';
+import { migrateExerciseCatalog } from './migrations/007-exercise-catalog.ts';
 
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 // This subset also lets the migration run against SQLite in local checks.
 export type MigrationDatabase = Pick<SQLiteDatabase, 'execAsync' | 'getFirstAsync' | 'runAsync' | 'withTransactionAsync'>;
-export const DATABASE_VERSION = 6;
+export const DATABASE_VERSION = 7;
 
 export async function initializeDatabase(db: MigrationDatabase): Promise<void> {
   await db.execAsync('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
@@ -65,6 +66,12 @@ export async function initializeDatabase(db: MigrationDatabase): Promise<void> {
     await db.withTransactionAsync(async () => {
       await migrateIncrementalSync(db);
       await db.execAsync('PRAGMA user_version = 6;');
+    });
+  }
+  if (version.user_version < 7) {
+    await db.withTransactionAsync(async () => {
+      await migrateExerciseCatalog(db);
+      await db.execAsync('PRAGMA user_version = 7;');
     });
   }
 }

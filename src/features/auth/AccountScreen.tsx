@@ -1,8 +1,10 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useEffect, useState } from 'react';
+import { Linking } from 'react-native';
 
 import { AppButton } from '@/components/AppButton';
 import { AppCard } from '@/components/AppCard';
+import { AppPressable } from '@/components/AppPressable';
 import { AppScreen } from '@/components/AppScreen';
 import { AppText } from '@/components/AppText';
 import { useWorkoutDatabase } from '@/features/workouts/useWorkoutData';
@@ -86,6 +88,15 @@ export function AccountScreen() {
         onPress={() => { void logout(); }}
       />
       <AppText variant="caption" tone="secondary">Academia · versão inicial 0.1.0</AppText>
+      <AppCard>
+        <AppText variant="label">Sobre / Créditos</AppText>
+        <AppPressable accessibilityRole="link" onPress={() => {
+          void Linking.openURL('https://repdb.co').catch(() => setMessage('Não foi possível abrir os créditos. Acesse repdb.co.'));
+        }}>
+          <AppText variant="caption" tone="primary">Exercise data by RepDB (repdb.co)</AppText>
+        </AppPressable>
+        <AppText variant="caption" tone="secondary">Dados e ilustrações: RepDB Free Tier. Curadoria e nomes em português: Academia.</AppText>
+      </AppCard>
     </AppScreen>
   );
 }
